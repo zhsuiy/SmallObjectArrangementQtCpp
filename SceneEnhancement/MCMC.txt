@@ -1,0 +1,15 @@
+7.64928
+Bed 1
+BedPillow 0
+BedSheet 1
+Cabinet 1
+Carpet 11
+Chair 11
+Closet 11
+Curtain 9
+Desk 12
+Floor 3
+NightTable 11
+Wall 10
+WallPhoto 10
+Window 3

@@ -1,0 +1,6 @@
+final F = 3.53902
+Bed 3
+Chair 10
+Desk 14
+Floor 1
+Wall 3
