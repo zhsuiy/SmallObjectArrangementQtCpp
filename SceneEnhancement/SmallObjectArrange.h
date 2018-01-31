@@ -15,11 +15,33 @@ public:
 	SmallObjectArrange();
 	~SmallObjectArrange();
 
+	void InitArranger();
 	void UpdateUserPreferences(QVector<QPair<QPair<CatName, CatName>, Relation>> height_pref,
 		QVector<QPair<QPair<CatName, CatName>, Relation>> medium_pref,
 		QVector<QPair<QPair<CatName, CatName>, Relation>> depth_pref);
 	void PropagateUserPreference();
 	
+	QMap<CatName, int> GetCatIndexMapping() {
+		return map_cat_index;
+	};
+	QVector<QVector<float>> GetHeightEqualProb() {
+		return cat_pair_equal_height;
+	}
+	QVector<QVector<float>> GetMediumEqualProb() {
+		return cat_pair_equal_medium;
+	}
+	QVector<QVector<float>> GetDepthEqualProb() {
+		return cat_pair_equal_depth;
+	}
+	QVector<QVector<float>> GetHeightHigherProb() {
+		return cat_pair_height;
+	}
+	QVector<QVector<float>> GetMidiumMiddleProb() {
+		return cat_pair_medium;
+	}
+	QVector<QVector<float>> GetDepthFrontProb() {
+		return cat_pair_depth;
+	}
 	
 private:
 // hyper parameters

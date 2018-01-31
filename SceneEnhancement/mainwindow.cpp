@@ -80,7 +80,9 @@ MainWindow::MainWindow(QWidget *parent)
 	connect(actionUpdateMaterialByLearner, &QAction::triggered, displaySceneWidget, &DisplaySceneGLWidget::UpdateMaterialsByLearner);
 	QAction *actionUpdateParameter = MenuUpdate->addAction(tr("Update parameter"));
 	connect(actionUpdateParameter, &QAction::triggered, displaySceneWidget, &DisplaySceneGLWidget::UpdateParameter);
-	
+	QAction *actionUpdateScales = MenuUpdate->addAction(tr("Update decoration scales"));
+	connect(actionUpdateScales, &QAction::triggered, displaySceneWidget, &DisplaySceneGLWidget::UpdateDecorationScales);
+
 
 	MenuRender = menuBar()->addMenu(tr("Render"));	
 	QAction *renderObj = MenuRender->addAction(tr("Batch render objects"));
@@ -91,6 +93,8 @@ MainWindow::MainWindow(QWidget *parent)
 	connect(initSmallObject, &QAction::triggered, displaySceneWidget, &DisplaySceneGLWidget::InitSmallObjects);
 	QAction *propagate = MenuRender->addAction(tr("Propagate user preferences"));
 	connect(propagate, &QAction::triggered, displaySceneWidget, &DisplaySceneGLWidget::PropagateUserPreferences);
+	QAction *arrange = MenuRender->addAction(tr("Arrange small objects using preference and equal matrix"));
+	connect(arrange, &QAction::triggered, displaySceneWidget, &DisplaySceneGLWidget::ArrangeDecorationsActive);
 
 
 

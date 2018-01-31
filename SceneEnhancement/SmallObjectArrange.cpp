@@ -8,59 +8,57 @@ using namespace alglib;
 
 SmallObjectArrange::SmallObjectArrange()
 {
-	//real_2d_array a = "[[1.1,-0.8,-0.2],[-0.8,1.4,-0.5],[-0.2,-0.5,0.8]]"; // H
-	real_2d_array a = "[[ 2.7,-0.7,-0.9, -0.1],[-0.7,2.9,-0.4,-0.8],[-0.9,-0.4,2.6,-0.3],[-0.1,-0.8,-0.3,2.2]]"; // H
-	real_1d_array b = "[-0.8,-0.2,-0.8,-0.2]"; // f
-	real_1d_array s = "[1,1,1,1]";
-	//real_2d_array c = "[[1.0,1.0,2.0],[-1.0,2.0,2.0],[2.0,1.0,3.0]]";
-	//integer_1d_array ct = "[-1,-1,-1]";
-	real_1d_array bndl = "[0.0,0.0,0.0,0.0]";
-	real_1d_array bndu = "[0.0,1.0,1.0,1.0]";
-	//real_2d_array a = "[[6,2],[2,2]]"; // H
-	//real_1d_array b = "[1,6]"; // f
-	//real_1d_array s = "[1,1]";
-	//real_2d_array c = "[[2.0,3.0,4.0]]";
-	//integer_1d_array ct = "[1]";
-	//real_1d_array bndl = "[0.0,0.0]";
-	//real_1d_array bndu = "[+INF,+INF]";
-	real_1d_array x;
-	minqpstate state;
-	minqpreport rep;
+	// examples for using alglib
+	//real_2d_array a = "[[ 2.7,-0.7,-0.9, -0.1],[-0.7,2.9,-0.4,-0.8],[-0.9,-0.4,2.6,-0.3],[-0.1,-0.8,-0.3,2.2]]"; // H
+	//real_1d_array b = "[-0.8,-0.2,-0.8,-0.2]"; // f
+	//real_1d_array s = "[1,1,1,1]";
+	////real_2d_array c = "[[1.0,1.0,2.0],[-1.0,2.0,2.0],[2.0,1.0,3.0]]";
+	////integer_1d_array ct = "[-1,-1,-1]";
+	//real_1d_array bndl = "[0.0,0.0,0.0,0.0]";
+	//real_1d_array bndu = "[0.0,1.0,1.0,1.0]"; //"[+INF,+INF]";
+	//real_1d_array x;
+	//minqpstate state;
+	//minqpreport rep;
 
-	// create solver, set quadratic/linear terms
-	minqpcreate(4, state);
-	minqpsetquadraticterm(state, a);
-	minqpsetlinearterm(state, b);
-	//minqpsetlc(state, c, ct);
-	minqpsetbc(state, bndl,bndu);
+	//// create solver, set quadratic/linear terms
+	//minqpcreate(4, state);
+	//minqpsetquadraticterm(state, a);
+	//minqpsetlinearterm(state, b);
+	////minqpsetlc(state, c, ct);
+	//minqpsetbc(state, bndl,bndu);
 
-	minqpsetscale(state, s);
+	//minqpsetscale(state, s);
 
-	minqpsetalgobleic(state, 0.0, 0.0, 0.0, 0);
-	minqpoptimize(state);
-	minqpresults(state, x, rep);
-	printf("%s\n", x.tostring(4).c_str()); // EXPECTED: [1.500,0.500]
-	printf("%d\n", int(rep.terminationtype)); // EXPECTED: 4
+	//minqpsetalgobleic(state, 0.0, 0.0, 0.0, 0);
+	//minqpoptimize(state);
+	//minqpresults(state, x, rep);
+	//printf("%s\n", x.tostring(4).c_str()); // EXPECTED: [1.500,0.500]
+	//printf("%d\n", int(rep.terminationtype)); // EXPECTED: 4
 
-	minqpsetalgodenseaul(state, 1.0e-9, 1.0e+4, 5);
-	minqpoptimize(state);
-	minqpresults(state, x, rep);
-	printf("%s\n", x.tostring(4).c_str()); // EXPECTED: [1.500,0.500]
-	printf("%d\n", int(rep.terminationtype)); // EXPECTED: 4
+	//minqpsetalgodenseaul(state, 1.0e-9, 1.0e+4, 5);
+	//minqpoptimize(state);
+	//minqpresults(state, x, rep);
+	//printf("%s\n", x.tostring(4).c_str()); // EXPECTED: [1.500,0.500]
+	//printf("%d\n", int(rep.terminationtype)); // EXPECTED: 4
+	//
+	//minqpsetalgoquickqp(state, 0.0, 0.0, 0.0, 0, true);
+	//minqpoptimize(state);
+	//minqpresults(state, x, rep);
+	//printf("%d\n", int(rep.terminationtype)); // EXPECTED: 4
+	//printf("%s\n", x.tostring(4).c_str()); // EXPECTED: [2.5,2]
 	
-	minqpsetalgoquickqp(state, 0.0, 0.0, 0.0, 0, true);
-	minqpoptimize(state);
-	minqpresults(state, x, rep);
-	printf("%d\n", int(rep.terminationtype)); // EXPECTED: 4
-	printf("%s\n", x.tostring(4).c_str()); // EXPECTED: [2.5,2]
-	
-	init();
+	//init();
 	// test progpp	
 	
 }
 
 SmallObjectArrange::~SmallObjectArrange()
 {
+}
+
+void SmallObjectArrange::InitArranger()
+{
+	init();
 }
 
 void SmallObjectArrange::UpdateUserPreferences(QVector<QPair<QPair<CatName, CatName>, Relation>> height_pref, QVector<QPair<QPair<CatName, CatName>, Relation>> medium_pref, QVector<QPair<QPair<CatName, CatName>, Relation>> depth_pref)

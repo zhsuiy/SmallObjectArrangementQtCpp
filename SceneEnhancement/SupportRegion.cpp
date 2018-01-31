@@ -5,6 +5,7 @@
 #include "Utility.h"
 #include "Assets.h"
 #include <ctime>
+#include "SmallObjectArrange.h"
 
 SupportRegion::SupportRegion()
 {
@@ -140,6 +141,90 @@ double SupportRegion::ArrangeDecorationModels(FurnitureModel* support, QVector<D
 	return all_results[0].second;
 }
 
+// For active learning
+double SupportRegion::ArrangeDecorationModels(FurnitureModel * support, QVector<DecorationModel*> models, SmallObjectArrange * arranger)
+{
+	if (models.size() == 0)
+	{
+		return 0.0;
+	}
+	m_decoration_models = models;
+	furniture = support;
+
+	srand(time(NULL));
+	typedef int DecorationID;
+
+	QList<QPair<QMap<DecorationID, QPair<XRatio, ZRatio>>, double>> all_results;
+	QMap<DecorationID, QPair<XRatio, ZRatio>> decoration_pos_ratio;
+	QMap<DecorationID, QPair<XRatio, ZRatio>> old_decoration_pos_ratio;
+	// 初始化
+	for (size_t i = 0; i < models.size(); i++)
+	{
+		if (!decoration_pos_ratio.contains(i))
+		{
+			double xratio = (static_cast<double>(rand()) / (RAND_MAX));
+			double zratio = (static_cast<double>(rand()) / (RAND_MAX));
+			decoration_pos_ratio[i] = QPair<XRatio, ZRatio>(xratio, zratio);
+		}
+	}
+	updateDecorationModelCoords(models, decoration_pos_ratio);
+
+	if (models.size() == 1)
+	{
+		decoration_pos_ratio[0].first = 0.5;
+		decoration_pos_ratio[0].second = 0.5;
+		double F = getCost(models, decoration_pos_ratio, arranger);
+		updateDecorationModelCoords(models, decoration_pos_ratio);
+		return F;
+
+	}
+	double F = getCost(models, decoration_pos_ratio, arranger);
+	double Fold = F;
+
+
+	int total_iteration = 10000;
+	int n = 0;
+	double beta = 5.0;
+	// initial
+	all_results.push_back(QPair<QMap<int, QPair<XRatio, ZRatio>>, double>
+		(QMap<int, QPair<XRatio, ZRatio>>(decoration_pos_ratio), F));
+	while (n++ < total_iteration)
+	{
+		// 记录更改前的状态
+		old_decoration_pos_ratio = QMap<int, QPair<XRatio, ZRatio>>(decoration_pos_ratio);
+
+		// proposal
+		applyProposalMoves(decoration_pos_ratio);
+		// 根据ratio更新decoration的位置
+		updateDecorationModelCoords(models, decoration_pos_ratio);
+
+		F = getCost(models, decoration_pos_ratio, arranger);
+
+		double accept_rate = qMin(1.0, exp(-beta*F) / exp(-beta*Fold));
+		if ((static_cast<double>(rand()) / (RAND_MAX)) < accept_rate) // 接受
+		{
+			Fold = F;
+			// 保存当前结果
+			all_results.push_back(QPair<QMap<int, QPair<XRatio, ZRatio>>, double>
+				(QMap<int, QPair<XRatio, ZRatio>>(decoration_pos_ratio), F));
+		}
+		else
+		{
+			// 回退到更改前
+			decoration_pos_ratio = old_decoration_pos_ratio;
+			//n--;
+		}
+	}
+	qSort(all_results.begin(), all_results.end(), Utility::QPairSecondComparerAscending());
+
+	// 根据结果更新decoration model的位置
+
+	decoration_pos_ratio = all_results[0].first;
+	updateDecorationModelCoords(models, decoration_pos_ratio);
+	return all_results[0].second;
+}
+
+
 void SupportRegion::Clear()
 {
 	this->m_decoration_models.clear();
@@ -240,10 +325,35 @@ double SupportRegion::getCost(QVector<DecorationModel*> models, QMap<int, QPair<
 	F += 10*calculate_boundary_test(models);
 
 	// 关于前后order
-	 F += 4 * calculate_decoration_orders(models,decoration_XZ);
+	 F += 4 * calculate_decoration_depth_orders(models,decoration_XZ);
 
 	// 关于左右order
 	F += 4 * calculate_decoration_medial_orders(models, decoration_XZ);	
+
+	// 相同物体位置应相近
+	//F += 2 * calculate_same_decoration_pos(models, decoration_XZ);
+
+	return F;
+}
+
+double SupportRegion::getCost(QVector<DecorationModel*> models, QMap<int, QPair<double, double>> decoration_XZ, SmallObjectArrange * arranger)
+{
+	double F = 0.0;
+
+	// 碰撞检测
+	F += 10 * calculate_collide_area(models);
+
+	// 和其他大家具的碰撞
+	F += 10 * calculate_collide_area(models, Assets::GetAssetsInstance()->GetFurnitureModels());
+
+	// 出界检测
+	F += 10 * calculate_boundary_test(models);
+
+	// 关于前后order
+	F += 4 * calculate_decoration_depth_orders(models, decoration_XZ, arranger);
+
+	// 关于左右order
+	F += 4 * calculate_decoration_medial_orders(models, decoration_XZ, arranger);
 
 	// 相同物体位置应相近
 	//F += 2 * calculate_same_decoration_pos(models, decoration_XZ);
@@ -330,7 +440,7 @@ double SupportRegion::calculate_boundary_test(QVector<DecorationModel*> models)
 	return f;
 }
 
-double SupportRegion::calculate_decoration_orders(QVector<DecorationModel*> models,QMap<int, QPair<double, double>> decoration_xz_ratios)
+double SupportRegion::calculate_decoration_depth_orders(QVector<DecorationModel*> models,QMap<int, QPair<double, double>> decoration_xz_ratios)
 {
 	double f = 0.0;
 	// 可以放在外面
@@ -387,6 +497,72 @@ double SupportRegion::calculate_decoration_orders(QVector<DecorationModel*> mode
 	fs /= n;
 
 	f += fs;
+
+	return f;
+}
+
+double SupportRegion::calculate_decoration_depth_orders(QVector<DecorationModel*> models, QMap<int, QPair<double, double>> decoration_xz_ratios, SmallObjectArrange * arranger)
+{
+	double f = 0.0;
+	QMap<int, QPair<double, double>>::iterator it;	
+	QVector<CatName> cur_cats;
+	for (it = decoration_xz_ratios.begin(); it != decoration_xz_ratios.end(); ++it)
+		cur_cats.push_back(models[it.key()]->Type);
+	int n = cur_cats.size();
+
+	// info
+	auto all_cats_index_mapping = arranger->GetCatIndexMapping();
+	auto depth_pref = arranger->GetDepthFrontProb();
+	auto depth_equal = arranger->GetDepthEqualProb();
+	float norm_n = 0;
+	for (size_t i = 0; i < n; i++)
+	{
+		for (size_t j = 0; j < n; j++)
+		{
+			auto cati = cur_cats[i];
+			auto catj = cur_cats[j];
+			if (all_cats_index_mapping.contains(cati) &&
+				all_cats_index_mapping.contains(catj))
+			{
+				// index in active learning data
+				auto index_i = all_cats_index_mapping[cati];
+				auto index_j = all_cats_index_mapping[catj];
+				auto equal_ij = depth_equal[index_i][index_j];
+				auto depth_front_ij = depth_pref[index_i][index_j];
+				// not defined
+				if (equal_ij == -1 || depth_front_ij == -1)
+					continue;
+				
+				// equal cost:
+				// record how the two objects are different
+				double equal_cost = getPairZOrderCost(decoration_xz_ratios[i],
+					decoration_xz_ratios[j], true);
+				f += equal_ij*equal_cost;
+				// record how 
+				// j should be back, i should be front
+				// using depth_front_ij to punish how j is wrongly put in front of i
+				double unequal_cost = getPairZOrderCost(decoration_xz_ratios[j],
+					decoration_xz_ratios[i]);
+				f += depth_front_ij* unequal_cost;
+				norm_n++;
+			}
+		}
+	}	
+	f = f / norm_n;
+
+	//// single
+	//double fs = 0.0;
+	//int n = decoration_orders.size();
+	//double mz = decoration_orders[(n - 1) / 2].second;
+	//for (size_t i = 0; i < decoration_orders.size(); i++)
+	//{
+	//	// 最中间的最应该接近0.5,惩罚力度最大
+	//	fs += 1 / (1 + exp(abs(decoration_orders[i].second - mz)))  * getSingleZOrderCost(decoration_xz_ratios[decoration_orders[i].first]);
+	//}
+
+	//fs /= n;
+
+	//f += fs;
 
 	return f;
 }
@@ -530,6 +706,58 @@ double SupportRegion::calculate_decoration_medial_orders(QVector<DecorationModel
 
 	return f;
 
+}
+
+double SupportRegion::calculate_decoration_medial_orders(QVector<DecorationModel*> models, QMap<int, QPair<double, double>> decoration_xz_ratios, SmallObjectArrange * arranger)
+{
+	double f = 0.0;
+	QMap<int, QPair<double, double>>::iterator it;
+	QVector<CatName> cur_cats;
+	for (it = decoration_xz_ratios.begin(); it != decoration_xz_ratios.end(); ++it)
+		cur_cats.push_back(models[it.key()]->Type);
+	int n = cur_cats.size();
+
+	// info
+	auto all_cats_index_mapping = arranger->GetCatIndexMapping();
+	auto medium_pref = arranger->GetMidiumMiddleProb();
+	auto medium_equal = arranger->GetMediumEqualProb();
+	float norm_n = 0;
+	for (size_t i = 0; i < n; i++)
+	{
+		for (size_t j = 0; j < n; j++)
+		{
+			auto cati = cur_cats[i];
+			auto catj = cur_cats[j];
+			if (all_cats_index_mapping.contains(cati) &&
+				all_cats_index_mapping.contains(catj))
+			{
+				// index in active learning data
+				auto index_i = all_cats_index_mapping[cati];
+				auto index_j = all_cats_index_mapping[catj];
+				auto equal_ij = medium_equal[index_i][index_j];
+				auto medium_center_ij = medium_pref[index_i][index_j];
+				// not defined
+				if (equal_ij == -1 || medium_center_ij == -1)
+					continue;
+
+				// equal cost:
+				// record how the two objects are different
+				double equal_cost = getPairMedialOrderCost(decoration_xz_ratios[i],
+					decoration_xz_ratios[j], true);
+				f += equal_ij*equal_cost;
+				// record how 
+				// j should be far from medium, i should be near medium
+				// using medium_center_ij to punish how j is wrongly put nearer than i to medium
+				double unequal_cost = getPairMedialOrderCost(decoration_xz_ratios[j],
+					decoration_xz_ratios[i]);
+				f += medium_center_ij* unequal_cost;
+				norm_n++;
+			}
+		}
+	}
+	f = f / norm_n;
+
+	return f;
 }
 
 double SupportRegion::getPairMedialOrderCost(QPair<double, double> far_medial, QPair<double, double> near_medial, bool isSame)

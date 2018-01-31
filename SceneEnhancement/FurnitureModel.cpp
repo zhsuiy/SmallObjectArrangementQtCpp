@@ -217,6 +217,139 @@ int compare(const QPair<QString, float> &a1, const QPair<QString, float> &a2)
 	return a1.second > a2.second;
 }
 
+void FurnitureModel::UpdateDecorationLayoutActiveLearning(SmallObjectArrange * arranger)
+{	
+	if (decoration_models.size() == 0)
+	{
+		return;
+	}
+	auto para = Parameter::GetParameterInstance();
+
+	if (support_regions.size() == 1) // 单层物体
+	{
+		SupportRegion *support_region = this->support_regions[0];
+
+		// Step 1. 初步的filter,去掉面积过大的物体
+		QVector<DecorationModel*> tmp_models;
+		float sum_area = 0;
+		float support_area = support_region->Width * support_region->Depth;
+		for (size_t i = 0; i < decoration_models.size(); i++)
+		{
+			DecorationModel* model = decoration_models[i];
+			float area = model->boundingBox->Depth()*model->GetScale()*model->boundingBox->Width()*model->GetScale();
+			if (sum_area + area < support_area*para->SupportRegionPercent) //面积比80%的support region小
+			{
+				sum_area += area;
+				tmp_models.push_back(model);
+			}
+			else
+			{
+				// remove this model from rendering list
+				model->IsAssigned = false;
+			}
+		}
+		decoration_models = tmp_models;
+
+		// Step 2. 单层的	
+		// 摆得下		
+		double F = support_region->ArrangeDecorationModels(this, decoration_models,arranger);
+		std::cout << this->Type.toStdString() << " Decoration Score: " << F << std::endl;
+	}
+	else// 多层的
+	{
+		// 先把IsAssigned置0
+		for (size_t i = 0; i < decoration_models.size(); i++)
+		{
+			decoration_models[i]->IsAssigned = false;
+		}
+
+		// 根据HeightOrder重新排序
+		auto all_height_orders = Assets::GetAssetsInstance()->DecorationHOrders;
+		QVector<QPair<int, double>> decorationheightorder;
+		for (size_t i = 0; i < decoration_models.size(); i++)
+		{
+			if (all_height_orders.keys().contains(decoration_models[i]->Type))
+				decorationheightorder.push_back(QPair<int, double>(i, all_height_orders[decoration_models[i]->Type]));
+			else // 其他物体的高度优先级是0
+				decorationheightorder.push_back(QPair<int, double>(i, 0));
+		}
+		qSort(decorationheightorder.begin(), decorationheightorder.end(), Utility::QPairSecondComparer());
+		QVector<DecorationModel*> height_ordered_dec_list;
+		for (size_t i = 0; i < decorationheightorder.size(); i++)
+		{
+			height_ordered_dec_list.push_back(decoration_models[decorationheightorder[i].first]);
+		}
+		decoration_models = height_ordered_dec_list;
+
+
+		double F = 0.0;
+		int n = support_regions.size();
+		// 确保每层都有
+		int m_added = 0;
+		int init = Parameter::GetParameterInstance()->AllowTupFurnitures.contains(this->Type) ? 0 : 1;
+		for (size_t i = init; i < n; i++) //for (size_t i = 0; i < n; i++)  when top layer is not allowed
+		{
+			SupportRegion *support_region = this->support_regions[i];
+			QVector<DecorationModel*> tmp_models;
+			float sum_area = 0;
+			float support_area = support_region->Width * support_region->Depth;
+			for (size_t j = 0; j < decoration_models.size(); j++)
+			{
+				DecorationModel* model = decoration_models[j];
+				if (model->IsAssigned)
+				{
+					continue;
+				}
+				float area = model->boundingBox->Depth()*model->GetScale()*model->boundingBox->Width()*model->GetScale();
+				float height = model->boundingBox->Height()*model->GetScale();
+				if (sum_area + area < support_area*para->SupportRegionPercent) //面积比support region小
+																			   //if (sum_area + area < support_area*0.7) //面积比support region小
+				{
+					if (i > 0) // 中间层要考虑高度差
+					{
+						// 两层之差
+						float support_region_height = support_regions[i - 1]->Height - support_region->Height;
+						if (height < support_region_height)
+						{
+							sum_area += area;
+							tmp_models.push_back(model);
+							m_added++;
+							model->IsAssigned = true;
+							if (tmp_models.size() >= para->EachSupportLayerMaxModelNum || (decoration_models.size() - m_added) <= (n - i - 1))
+							{
+								break;
+							}
+						}
+						else
+						{
+							model->IsAssigned = false;
+						}
+					}
+					else
+					{
+						sum_area += area;
+						tmp_models.push_back(model);
+						m_added++;
+						model->IsAssigned = true;
+						if (/*tmp_models.size() >= 2 ||*/ (decoration_models.size() - m_added) <= (n - i))
+						{
+							break;
+						}
+					}
+
+				}
+				else
+				{
+					// remove this model from rendering list					
+					model->IsAssigned = false;
+				}
+			}
+			F += support_region->ArrangeDecorationModels(this, tmp_models,arranger);
+		}
+		std::cout << this->Type.toStdString() << " Decoration Score: " << F << std::endl;
+	}
+}
+
 void FurnitureModel::OrderMaterialByMeshArea()
 {
 	QMap<QString, float> tmp;
@@ -258,7 +391,6 @@ void FurnitureModel::updateTextureState()
 		}
 	}
 }
-
 
 void FurnitureModel::UpdateMeshMaterials()
 {
@@ -482,6 +614,7 @@ void FurnitureModel::UpdateDecorationLayout()
 
 }
 
+// see ./config/DecorationModels_girl.txt
 void FurnitureModel::UpdateDecorationLayoutWithConstraints()
 {
 	int layer = this->support_regions.size() - 1;

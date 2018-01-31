@@ -57,6 +57,8 @@ public:
 	void UpdateMedialOrder();
 	void UpdateZOrder();
 
+	void UpdateDecorationScales();
+
 private:
 	QMap<QString, Material*> m_materials;
 	QVector<FurnitureModel*> m_funitureModels;

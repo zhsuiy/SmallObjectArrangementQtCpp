@@ -3,9 +3,11 @@
 
 #include "Model.h"
 #include "SupportRegion.h"
+//#include "SmallObjectArrange.h"
 
 class ColorPalette;
 class DecorationModel;
+class SmallObjectArrange;
 
 #define FurnitureType QString 
 #define FurnitureName QString
@@ -51,6 +53,9 @@ public:
 	bool IsShowTexture;
 	int GetDecorationModelSize() { return decoration_models.size(); }
 	QVector<SupportRegion*> support_regions;
+
+	// active learning part
+	void UpdateDecorationLayoutActiveLearning(SmallObjectArrange* arranger);
 protected:
 	QVector<Material*> ordered_materials;
 	void OrderMaterialByMeshArea();
@@ -70,11 +75,6 @@ protected:
 private:
 	QVector3D& getTranslate(float x, float y, float z);
 	
-	
-	
-	
-	
-
 };
 
 #endif

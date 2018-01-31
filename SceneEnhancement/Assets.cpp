@@ -95,6 +95,12 @@ void Assets::UpdateZOrder()
 	InitDecorationZOrders();
 }
 
+void Assets::UpdateDecorationScales()
+{
+	DecorationScales.clear();
+	InitDecorationScales();
+}
+
 void Assets::InitDecorationMedialOrders()
 {
 	if (DecorationMedialOrders.size() == 0)

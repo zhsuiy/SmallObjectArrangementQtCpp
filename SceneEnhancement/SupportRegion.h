@@ -2,10 +2,13 @@
 #include <QtCore/QVector>
 #include <QtCore/qmap.h>
 #include <QtGui/QVector3D>
+//#include "SmallObjectArrange.h"
 
+//class SmallObjectArrange;
 class FurnitureModel;
 class DecorationModel;
 class QMatrix4x4;
+class SmallObjectArrange;
 
 
 class SupportRegion
@@ -16,7 +19,9 @@ public:
 	bool IsSpaceEnough() const;	
 	bool TryPutDecorationModel(DecorationModel *model);
 	double ArrangeDecorationModels(FurnitureModel* support, QVector<DecorationModel*> models);
-
+	// for active learning
+	double ArrangeDecorationModels(FurnitureModel* support, QVector<DecorationModel*> models, SmallObjectArrange* arranger);
+	
 	void Clear();
 	float MinX;
 	float MaxX;
@@ -29,8 +34,6 @@ public:
 	QVector<DecorationModel *> m_decoration_models;
 private:
 	FurnitureModel *furniture;
-
-	
 	void updateRemainingArea();
 	
 	float m_area;
@@ -42,17 +45,20 @@ private:
 	
 	// total cost
 	double getCost(QVector<DecorationModel*> models, QMap<int, QPair<double, double>> decoration_XZ);
-
+	// for active learning
+	double getCost(QVector<DecorationModel*> models, QMap<int, QPair<double, double>> decoration_XZ, SmallObjectArrange* arranger);
 	// collide cost
 	double calculate_collide_area(QVector<DecorationModel*> models);
 	double calculate_collide_area(QVector<DecorationModel*> models, QVector<FurnitureModel*> furnitureodels);
 	// boundary test
 	double calculate_boundary_test(QVector<DecorationModel*> models);
 	// arrange decorations
-	double calculate_decoration_orders(QVector<DecorationModel*> models,QMap<int, QPair<double, double>> decoration_XZ);	
+	double calculate_decoration_depth_orders(QVector<DecorationModel*> models,QMap<int, QPair<double, double>> decoration_XZ);
+	double calculate_decoration_depth_orders(QVector<DecorationModel*> models, QMap<int, QPair<double, double>> decoration_XZ, SmallObjectArrange* arranger);
 	double getPairZOrderCost(QPair<double, double> back, QPair<double, double> front, bool isSame=false); // 代表这两个物体是否同一类
 	double getSingleZOrderCost(QPair<double, double> xz);
 	double calculate_decoration_medial_orders(QVector<DecorationModel*> models, QMap<int, QPair<double, double>> decoration_XZ);
+	double calculate_decoration_medial_orders(QVector<DecorationModel*> models, QMap<int, QPair<double, double>> decoration_XZ, SmallObjectArrange* arranger);
 	double getPairMedialOrderCost(QPair<double, double> far, QPair<double, double> near, bool isSame=false);
 	double getSingleMedialOrderCost(QPair<double, double> xz);
 

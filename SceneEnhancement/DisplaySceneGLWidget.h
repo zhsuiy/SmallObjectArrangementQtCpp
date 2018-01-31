@@ -56,6 +56,9 @@ public:
 	void UpdateZOrderConstraints();
 	void UpdateHeightOrderConstraints();
 
+	// update decoration scales
+	void UpdateDecorationScales();
+
 	// scene export
 	void ExportScene();
 	void RecordTime();
@@ -66,6 +69,7 @@ public:
 	// small object arrangement
 	void InitSmallObjects();
 	void PropagateUserPreferences();
+	void ArrangeDecorationsActive();
 protected:
 	void initializeGL();
 	void paintGL();

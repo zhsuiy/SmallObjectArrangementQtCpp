@@ -813,6 +813,8 @@ void DisplaySceneGLWidget::ReadDecorations()
 				}				
 			}		
 		}
+		file->close();
+		delete file;
 	}
 	update();
 }
@@ -886,12 +888,17 @@ void DisplaySceneGLWidget::UpdateHeightOrderConstraints()
 	m_assets->UpdateHeightOrder();
 }
 
+void DisplaySceneGLWidget::UpdateDecorationScales()
+{
+	m_assets->UpdateDecorationScales();
+}
+
 void DisplaySceneGLWidget::ExportScene()
 {
 	for (size_t i = 0; i < models.size(); i++)
 	{
 		auto m = models[i];
-		m->ExportModel(QString::number(i));		
+		m->ExportModel(QString::number(i));
 	}
 }
 
@@ -966,12 +973,23 @@ void DisplaySceneGLWidget::RenderObjects()
 
 void DisplaySceneGLWidget::InitSmallObjects()
 {
-	
+	small_object_arranger->InitArranger();
 }
 
 void DisplaySceneGLWidget::PropagateUserPreferences()
 {
 	small_object_arranger->PropagateUserPreference();
+}
+
+void DisplaySceneGLWidget::ArrangeDecorationsActive()
+{
+	// layout decoration models
+	for (size_t i = 0; i < furniture_models.size(); i++)
+	{
+		furniture_models[i]->UpdateDecorationLayoutActiveLearning(small_object_arranger);
+	}
+	update();
+
 }
 
 void DisplaySceneGLWidget::initializeGL()
