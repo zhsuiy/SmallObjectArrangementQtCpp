@@ -190,6 +190,8 @@ double SupportRegion::ArrangeDecorationModels(FurnitureModel * support, QVector<
 		(QMap<int, QPair<XRatio, ZRatio>>(decoration_pos_ratio), F));
 	while (n++ < total_iteration)
 	{
+		if (n % 100 == 0)
+			std::cout << ".";
 		// 记录更改前的状态
 		old_decoration_pos_ratio = QMap<int, QPair<XRatio, ZRatio>>(decoration_pos_ratio);
 

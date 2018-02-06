@@ -7,7 +7,10 @@
 #include "Parameter.h"
 #include <QtCore/qdir.h>
 #include <ctime>
+#include <iterator>
+#include <vector>
 #include "ProbLearning.h"
+#include <algorithm>
 
 QVector3D Utility::Str2Vec3D(QString &str)
 {
@@ -397,6 +400,36 @@ QVector<QString> Utility::QStr2StrVector(QString types)
 		result.push_back(parts[i].trimmed());
 	}
 	return result;
+}
+
+vector<vector<int>> Utility::getCnm(vector<int> indices,int k)
+{
+	vector<vector<int>> results;
+	size_t n = indices.size();
+	//int values[] = { 1, 2, 3, 4, 5, 6, 7 };
+	//vector<int> elements(n,0);
+	/*for (size_t i = 0; i < k; i++)
+	{
+		elements[i] = 1;
+	}*/
+	//std::vector<int> selectors(elements, elements + n);
+	int count = 0;
+	do
+	{
+		vector<int> cur_comp;
+		//std::cout << ++count << ": ";
+		for (size_t i = 0; i < n; ++i)
+		{
+			//if (elements[i])
+			//{
+				cur_comp.push_back(indices[i]);
+				//std::cout << values[i] << ", ";
+			//}
+		}
+		results.push_back(cur_comp);
+		//std::cout << std::endl;
+	} while (next_permutation(indices.begin(), indices.end()));
+	return results;
 }
 
 QStringList Utility::GetFileNames(QString& path)

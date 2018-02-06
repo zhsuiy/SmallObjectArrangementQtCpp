@@ -71,10 +71,13 @@ void SmallObjectArrange::UpdateUserPreferences(QVector<QPair<QPair<CatName, CatN
 void SmallObjectArrange::PropagateUserPreference()
 {
 	QVector<QPair<QPair<CatName, CatName>, Relation>> pref;
-	pref.push_back(qMakePair(qMakePair(QString("pencil"), QString("lamp")), Greater));
-	pref.push_back(qMakePair(qMakePair(QString("pen"),QString("notebook")), Less));
+	//pref.push_back(qMakePair(qMakePair(QString("pencil"), QString("lamp")), Greater));
+	//pref.push_back(qMakePair(qMakePair(QString("pen"),QString("notebook")), Less));
+	pref.push_back(qMakePair(qMakePair(QString("book"), QString("notebook")), Less));
+	pref.push_back(qMakePair(qMakePair(QString("minifigure"), QString("figurine")), Equal));
 	//pref.push_back(qMakePair(qMakePair(QString("notebook"), QString("lamp")), Greater));
-	propagateUserPreference(cat_pair_depth, cat_pair_equal_depth, pref);
+	//propagateUserPreference(cat_pair_depth, cat_pair_equal_depth, pref);
+	propagateUserPreference(cat_pair_height, cat_pair_equal_height, pref);
 }
 
 void SmallObjectArrange::init()

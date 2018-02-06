@@ -5,6 +5,8 @@
 #include "DecorationModel.h"
 #include "ColorPalette.h"
 #include "Camera.h"
+#include <iostream>
+#include <vector>
 
 enum AdjType;
 
@@ -18,6 +20,9 @@ namespace Utility
 	bool QStr2Bool(QString &str);
 	bool QStrIsImagePath(QString &str);
 	QVector<QString> QStr2StrVector(QString types);	
+
+	// return a list of pair of indices compositions
+	std::vector<std::vector<int>> getCnm(std::vector<int> indices, int k);
 
 	QStringList GetFileNames(QString &path);
 

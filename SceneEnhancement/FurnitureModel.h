@@ -56,6 +56,7 @@ public:
 
 	// active learning part
 	void UpdateDecorationLayoutActiveLearning(SmallObjectArrange* arranger);
+	float getHeightCost(QVector<QVector<QString>> &cat_per_layer, SmallObjectArrange* arranger);
 protected:
 	QVector<Material*> ordered_materials;
 	void OrderMaterialByMeshArea();

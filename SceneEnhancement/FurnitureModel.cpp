@@ -1,6 +1,7 @@
 #include "FurnitureModel.h"
 #include "Parameter.h"
 #include "RecolorImage.h"
+#include "SmallObjectArrange.h"
 
 FurnitureModel::FurnitureModel()
 {
@@ -263,91 +264,132 @@ void FurnitureModel::UpdateDecorationLayoutActiveLearning(SmallObjectArrange * a
 			decoration_models[i]->IsAssigned = false;
 		}
 
-		// 根据HeightOrder重新排序
-		auto all_height_orders = Assets::GetAssetsInstance()->DecorationHOrders;
-		QVector<QPair<int, double>> decorationheightorder;
+		QVector<QString> dec_cats;
 		for (size_t i = 0; i < decoration_models.size(); i++)
 		{
-			if (all_height_orders.keys().contains(decoration_models[i]->Type))
-				decorationheightorder.push_back(QPair<int, double>(i, all_height_orders[decoration_models[i]->Type]));
-			else // 其他物体的高度优先级是0
-				decorationheightorder.push_back(QPair<int, double>(i, 0));
+			dec_cats.push_back(decoration_models[i]->Type);
 		}
-		qSort(decorationheightorder.begin(), decorationheightorder.end(), Utility::QPairSecondComparer());
-		QVector<DecorationModel*> height_ordered_dec_list;
-		for (size_t i = 0; i < decorationheightorder.size(); i++)
+		// calculate cost
+		float height_cost = 10000;
+		// from top to down
+		int n_layers = support_regions.size();
+		int m = decoration_models.size();
+		QVector<QVector<QString>> dec_each_layer;
+		QVector<QVector<int>> dec_each_layer_index, best_each_layer_index;
+		vector<int> indices;
+		for (size_t i = 0; i < m; i++)
+			indices.push_back(i);
+		int num_cat_per_layer = para->EachSupportLayerMaxModelNum;
+		auto permut = Utility::getCnm(indices, m);
+		int init = Parameter::GetParameterInstance()->AllowTupFurnitures.contains(this->Type) ? 0 : 1;
+		std::cout << "Assigning small objects to each layer\n";
+		for (size_t i = 0; i < permut.size(); i++)
 		{
-			height_ordered_dec_list.push_back(decoration_models[decorationheightorder[i].first]);
+			dec_each_layer.clear();
+			dec_each_layer_index.clear();
+			auto p = permut[i];
+			for (size_t k = 0; k < p.size(); k = k + num_cat_per_layer)
+			{
+				QVector<QString> cur;
+				QVector<int> cur_index;
+				for (size_t q = 0; q < num_cat_per_layer; q++)
+				{
+					cur.push_back(dec_cats[p[k+q]]);
+					cur_index.push_back(p[k+q]);
+				}					
+				dec_each_layer.push_back(cur);
+				dec_each_layer_index.push_back(cur_index);
+			}
+			float cost = getHeightCost(dec_each_layer, arranger);
+			if (cost < height_cost)
+			{
+				height_cost = cost;
+				best_each_layer_index = QVector<QVector<int>>(dec_each_layer_index);
+			}
+			if (i % 50 == 0)
+				std::cout << ".";
 		}
-		decoration_models = height_ordered_dec_list;
-
 
 		double F = 0.0;
-		int n = support_regions.size();
+		
 		// 确保每层都有
 		int m_added = 0;
-		int init = Parameter::GetParameterInstance()->AllowTupFurnitures.contains(this->Type) ? 0 : 1;
-		for (size_t i = init; i < n; i++) //for (size_t i = 0; i < n; i++)  when top layer is not allowed
+		std::cout << "\nArranging small objects layer by layer\n";
+		int cur_layer = 0; // to extract small objects
+		for (size_t i = init; i < n_layers; i++) //for (size_t i = 0; i < n; i++)  when top layer is not allowed
 		{
+			std::cout << "Arrange " << i << "th" << " layer...\n";
 			SupportRegion *support_region = this->support_regions[i];
 			QVector<DecorationModel*> tmp_models;
-			float sum_area = 0;
-			float support_area = support_region->Width * support_region->Depth;
-			for (size_t j = 0; j < decoration_models.size(); j++)
+			if (cur_layer >= best_each_layer_index.size())
+				break;
+			auto dec_indices = best_each_layer_index[cur_layer++];		
+			for (size_t j = 0; j < dec_indices.size(); j++)
 			{
-				DecorationModel* model = decoration_models[j];
-				if (model->IsAssigned)
-				{
-					continue;
-				}
-				float area = model->boundingBox->Depth()*model->GetScale()*model->boundingBox->Width()*model->GetScale();
-				float height = model->boundingBox->Height()*model->GetScale();
-				if (sum_area + area < support_area*para->SupportRegionPercent) //面积比support region小
-																			   //if (sum_area + area < support_area*0.7) //面积比support region小
-				{
-					if (i > 0) // 中间层要考虑高度差
-					{
-						// 两层之差
-						float support_region_height = support_regions[i - 1]->Height - support_region->Height;
-						if (height < support_region_height)
-						{
-							sum_area += area;
-							tmp_models.push_back(model);
-							m_added++;
-							model->IsAssigned = true;
-							if (tmp_models.size() >= para->EachSupportLayerMaxModelNum || (decoration_models.size() - m_added) <= (n - i - 1))
-							{
-								break;
-							}
-						}
-						else
-						{
-							model->IsAssigned = false;
-						}
-					}
-					else
-					{
-						sum_area += area;
-						tmp_models.push_back(model);
-						m_added++;
-						model->IsAssigned = true;
-						if (/*tmp_models.size() >= 2 ||*/ (decoration_models.size() - m_added) <= (n - i))
-						{
-							break;
-						}
-					}
-
-				}
-				else
-				{
-					// remove this model from rendering list					
-					model->IsAssigned = false;
-				}
+				DecorationModel* model = decoration_models[dec_indices[j]];
+				tmp_models.push_back(model);
+				model->IsAssigned = true;
 			}
-			F += support_region->ArrangeDecorationModels(this, tmp_models,arranger);
+			F += support_region->ArrangeDecorationModels(this, tmp_models, arranger);
+			std::cout << "\nLayer " << i << " score: " << F << std::endl;
 		}
 		std::cout << this->Type.toStdString() << " Decoration Score: " << F << std::endl;
 	}
+}
+
+float FurnitureModel::getHeightCost(QVector<QVector<QString>>& cat_per_layer, SmallObjectArrange * arranger)
+{
+	auto height_pref = arranger->GetHeightHigherProb();
+	auto height_equal = arranger->GetHeightEqualProb();
+	auto cat_index_map = arranger->GetCatIndexMapping();
+	float f = 0.0;
+	QVector<QPair<QString, int>> cat_height_pair;
+	for (size_t i = 0; i < cat_per_layer.size(); i++)
+	{
+		auto cats = cat_per_layer[i];
+		for (size_t j = 0; j < cats.size(); j++)
+		{
+			cat_height_pair.push_back(qMakePair(cats[j], i));
+		}
+	}
+
+	float norm_n = 0.0;
+	for (size_t i = 0; i < cat_height_pair.size(); i++)
+	{
+		for (size_t j = 0; j < cat_height_pair.size(); j++)
+		{
+			auto cati = cat_height_pair[i].first;
+			auto catj = cat_height_pair[j].first;
+			auto layeri = cat_height_pair[i].second;
+			auto layerj = cat_height_pair[j].second;
+			if (cat_index_map.contains(cati) &&
+				cat_index_map.contains(catj))
+			{
+				// index in active learning data
+				auto index_i = cat_index_map[cati];
+				auto index_j = cat_index_map[catj];
+				auto equal_ij = height_equal[index_i][index_j];
+				auto height_higher_ij = height_pref[index_i][index_j];
+				// not defined
+				if (equal_ij == -1 || height_higher_ij == -1)
+					continue;
+
+				// equal cost:
+				// record how the two objects are at different heights
+				double equal_cost = layeri == layerj ? 0 : 1.0 / (1.0 + exp(-(abs(layeri - layerj))));
+				f += equal_ij*equal_cost;
+				// record how 
+				// j should be back, i should be front
+				// using depth_front_ij to punish how j is wrongly put in front of i
+				double unequal_cost = layeri < layerj ? 0 : 1.0 / (1.0 + exp(-(layeri - layerj)));
+				f += height_higher_ij* unequal_cost;
+				norm_n++;
+			}
+		}
+	}
+	f /= norm_n;
+
+	return f;
 }
 
 void FurnitureModel::OrderMaterialByMeshArea()
@@ -523,7 +565,7 @@ void FurnitureModel::UpdateDecorationLayout()
 		for (size_t i = 0; i < decoration_models.size(); i++)
 		{
 			decoration_models[i]->IsAssigned = false;
-		}
+		}		
 		
 		// 根据HeightOrder重新排序
 		auto all_height_orders = Assets::GetAssetsInstance()->DecorationHOrders;
@@ -598,7 +640,6 @@ void FurnitureModel::UpdateDecorationLayout()
 							break;
 						}
 					}
-					
 				}
 				else
 				{
@@ -609,7 +650,6 @@ void FurnitureModel::UpdateDecorationLayout()
 			F += support_region->ArrangeDecorationModels(this, tmp_models);
 		}
 		std::cout << this->Type.toStdString() << " Decoration Score: " << F << std::endl;	
-		
 	}
 
 }
