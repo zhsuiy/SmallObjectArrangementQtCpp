@@ -92,6 +92,10 @@ void DecorationModel::Draw(QOpenGLShaderProgram* program)
 	{
 		boundingBox->Draw(program);
 	}
+	if (boundingBox != nullptr && IsSelected)
+	{
+		boundingBox->Draw(program);
+	}
 }
 
 void DecorationModel::SetRelativeTranslate(float tx, float ty, float tz)

@@ -12,6 +12,7 @@
 
 Model::Model():m_scale(1.0f)
 {
+	MID = Parameter::GetParameterInstance()->TotalModelCount++;
 }
 
 Model::Model(QString path):m_scale(1.0f)
@@ -36,6 +37,8 @@ Model::Model(QString path, QVector3D translate, QVector3D rotate, float scale = 
 
 void Model::init()
 {	
+	MID = Parameter::GetParameterInstance()->TotalModelCount++;
+	IsSelected = false;
 	this->updateVertexPosition();
 	this->updateMeshNormals();	
 	this->updateBoundingBox();	
@@ -57,8 +60,12 @@ void Model::Draw(QOpenGLShaderProgram *program)
 		{
 			meshes[i]->Draw(program);
 		}
-	}	
+	}
 	if (Parameter::GetParameterInstance()->IsDrawFurnitureBoundingBox && boundingBox != nullptr)
+	{
+		boundingBox->Draw(program);
+	}
+	if (boundingBox != nullptr && IsSelected)
 	{
 		boundingBox->Draw(program);
 	}

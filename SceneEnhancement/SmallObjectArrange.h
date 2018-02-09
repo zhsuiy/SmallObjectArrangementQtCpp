@@ -113,6 +113,9 @@ private:
 	QVector<int> getKNNCatIndices(CatName cat, int k);
 	float getPairPairSim(int i, int j, int k, int m);
 
+	// export
+	void exportPairwiseProb(QVector<QVector<float>> cat_pair_prob, QString path);
+
 	// solve quadratic programming
 	QVector<float> getPropagatedResults(QVector<QPair<int, int>> &variables, QVector<float> labels,
 		QVector<QVector<float>> &pair_info, float lambda);

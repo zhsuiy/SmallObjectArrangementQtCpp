@@ -72,12 +72,19 @@ void SmallObjectArrange::PropagateUserPreference()
 {
 	QVector<QPair<QPair<CatName, CatName>, Relation>> pref;
 	//pref.push_back(qMakePair(qMakePair(QString("pencil"), QString("lamp")), Greater));
-	//pref.push_back(qMakePair(qMakePair(QString("pen"),QString("notebook")), Less));
+	pref.push_back(qMakePair(qMakePair(QString("pen"),QString("notebook")), Greater));
 	pref.push_back(qMakePair(qMakePair(QString("book"), QString("notebook")), Less));
-	pref.push_back(qMakePair(qMakePair(QString("minifigure"), QString("figurine")), Equal));
+	//pref.push_back(qMakePair(qMakePair(QString("minifigure"), QString("figurine")), Equal));
 	//pref.push_back(qMakePair(qMakePair(QString("notebook"), QString("lamp")), Greater));
-	//propagateUserPreference(cat_pair_depth, cat_pair_equal_depth, pref);
-	propagateUserPreference(cat_pair_height, cat_pair_equal_height, pref);
+	propagateUserPreference(cat_pair_depth, cat_pair_equal_depth, pref);
+	//propagateUserPreference(cat_pair_height, cat_pair_equal_height, pref);
+
+	exportPairwiseProb(cat_pair_height, QString("./small-object-results/height-pref-propagated.txt"));
+	exportPairwiseProb(cat_pair_equal_height, QString("./small-object-results/height-equal-propagated.txt"));
+	exportPairwiseProb(cat_pair_depth, QString("./small-object-results/depth-pref-propagated.txt"));
+	exportPairwiseProb(cat_pair_equal_depth, QString("./small-object-results/depth-equal-propagated.txt"));
+	exportPairwiseProb(cat_pair_medium, QString("./small-object-results/medium-pref-propagated.txt"));
+	exportPairwiseProb(cat_pair_equal_medium, QString("./small-object-results/medium-equal-propagated.txt"));
 }
 
 void SmallObjectArrange::init()
@@ -140,6 +147,13 @@ void SmallObjectArrange::completeCatPairwiseProb()
 	completePrefProb(cat_pair_medium, cat_pair_equal_medium, cat_pair_uncertain_medium);
 	cout << "Complete depth preference pairs" << endl;
 	completePrefProb(cat_pair_depth, cat_pair_equal_depth, cat_pair_uncertain_depth);
+
+	exportPairwiseProb(cat_pair_height, QString("./small-object-results/height-pref-org.txt"));
+	exportPairwiseProb(cat_pair_equal_height, QString("./small-object-results/height-equal-org.txt"));
+	exportPairwiseProb(cat_pair_depth, QString("./small-object-results/depth-pref-org.txt"));
+	exportPairwiseProb(cat_pair_equal_depth, QString("./small-object-results/depth-equal-org.txt"));
+	exportPairwiseProb(cat_pair_medium, QString("./small-object-results/medium-pref-org.txt"));
+	exportPairwiseProb(cat_pair_equal_medium, QString("./small-object-results/medium-equal-org.txt"));	
 }
 
 void SmallObjectArrange::initCatSimMatrix()
@@ -375,8 +389,10 @@ QVector<float> SmallObjectArrange::getPropagatedResults(QVector<QPair<int, int>>
 		float sum = 0.0;
 		for (size_t j = 0; j < n; j++)
 		{
-			W(i, j) = getPairPairSim(variables[i].first, variables[i].second,
+			auto sim = getPairPairSim(variables[i].first, variables[i].second,
 				variables[j].first, variables[j].second);
+			W(i, j) = 0.001*exp(10 * sim);
+			//W(i, j) = sim == 1 ? 1000 : (sim / (1 - sim))*(sim / (1 - sim));
 			//cout << "Similarity: " << W(i, j) << endl;
 			D(i, j) = 0.0;
 			Lambda(i, j) = 0.0;
@@ -937,4 +953,30 @@ float SmallObjectArrange::getPairPairSim(int i, int j, int k, int m)
 	float sim_ik = cat_word2vec_similarity[i][k];
 	float sim_jm = cat_word2vec_similarity[j][m];
 	return sim_ik * sim_jm;
+}
+
+void SmallObjectArrange::exportPairwiseProb(QVector<QVector<float>> cat_pair_prob, QString path)
+{
+	int n = cat_pair_prob.size();
+	if (!path.isNull())
+	{
+		QFile file(path); // if not exist, create
+		file.open(QIODevice::WriteOnly);
+		file.close();
+		file.open(QIODevice::ReadWrite);
+		if (file.isOpen())
+		{
+			QTextStream txtOutput(&file);
+			for (size_t i = 0; i < n; i++)
+			{
+				for (size_t j = 0; j < n; j++)
+				{
+					auto cat1 = all_cats[i];
+					auto cat2 = all_cats[j];
+					txtOutput << cat1 << " " << cat2 << ":" << cat_pair_prob[i][j] << "\n";
+				}
+			}
+		}
+		file.close();
+	}
 }

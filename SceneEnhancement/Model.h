@@ -21,6 +21,7 @@ public:
 	virtual void Draw(QOpenGLShaderProgram *program);
 	
 	/* Attributes */
+	int MID;
 	void SetTranslation(QVector3D translate);
 	void SetScale(float scale);
 	void SetRotation(QVector3D rotate);
@@ -31,6 +32,7 @@ public:
 	void updateMeshNormals();
 	/* assimp data structure*/
 	const aiScene *AiScene;
+	bool IsSelected;
 
 	/* Export model using assimp*/
 	void ExportModel(QString name);

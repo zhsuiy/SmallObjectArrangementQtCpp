@@ -25,6 +25,8 @@ MainWindow::MainWindow(QWidget *parent)
 	main_layout->addWidget(displaySceneWidget);		
 	setWindowTitle("Scene Enhancement");
 	centralWidget->setLayout(main_layout);
+	FloatingWidget *test = new FloatingWidget();
+	main_layout->addWidget(test);
 
 	// menu
 	MenuFile = menuBar()->addMenu(tr("File"));
@@ -182,10 +184,8 @@ MainWindow::~MainWindow()
 }
 
 void MainWindow::OnDisplayScene()
-{
-	
+{	
 	main_layout->addWidget(displaySceneWidget); 
-	
 }
 
 void MainWindow::OnButtonUpdateMaterialClicked()

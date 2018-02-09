@@ -73,6 +73,7 @@ public:
 protected:
 	void initializeGL();
 	void paintGL();
+	void paintSelect();
 	void resizeGL(int width, int height);
 	
 
@@ -95,6 +96,7 @@ private:
 	QOpenGLBuffer m_ebo;
 	//QOpenGLFramebufferObject *m_fbo;
 	QOpenGLShaderProgram *m_program;
+	QOpenGLShaderProgram *m_program_selected;
 	QOpenGLVertexArrayObject light_vao;
 	QOpenGLShaderProgram *light_program;
 

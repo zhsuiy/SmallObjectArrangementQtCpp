@@ -52,7 +52,7 @@ public:
 	bool IsDrawFurnitureModel; // 是否绘制家具
 	bool IsDrawDecorationModel; // 是否绘制小物体
 	int SelectSampleMethodType; // 使用何种方法选择config, 0-MCMC, 1-submodular
-	
+	int TotalModelCount = 0;
 private:
 	Parameter();	
 	~Parameter();

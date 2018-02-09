@@ -242,10 +242,11 @@ void DisplaySceneGLWidget::UpdateCurrentMaterialsToGray()
 
 void DisplaySceneGLWidget::UpdateDecorationsByLearner()
 {
+	models.clear();
 	// 此处可以考虑使用max flow min cut进行小物件的分配
 	if (m_learner->IsLearned())
 	{
-		models.clear();
+		
 		for (size_t i = 0; i < decoration_models.size(); i++)
 		{
 			decoration_models[i]->IsAssigned = false;
@@ -395,6 +396,7 @@ void DisplaySceneGLWidget::UpdateDecorationsByLearner()
 		//furniture_models[i]->UpdateDecorationLayoutWithConstraints();
 		furniture_models[i]->UpdateDecorationLayout();
 	}
+	
 	// add decoration models to models
 	// 只有当模型真正被摆到furniture上的时候才需要被渲染
 	for (size_t i = 0; i < decoration_models.size(); i++)
@@ -997,6 +999,7 @@ void DisplaySceneGLWidget::initializeGL()
 	initializeOpenGLFunctions();
 	// Enable depth buffer
 	glEnable(GL_DEPTH_TEST);
+	
 	// Enable back face culling
 	//glEnable(GL_CULL_FACE);
 
@@ -1008,15 +1011,22 @@ void DisplaySceneGLWidget::initializeGL()
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	
 	glClearColor(0.3, 0.3, 0.3, 0);
+	//glRenderMode(GL_SELECT);
 
+	// init model shader
 	// Application-specific initialization
-	{
-		// Create Shader (Do not release until VAO is created)
-		m_program = new QOpenGLShaderProgram();
-		m_program->addShaderFromSourceFile(QOpenGLShader::Vertex, "./shaders/mesh.vert");
-		m_program->addShaderFromSourceFile(QOpenGLShader::Fragment, "./shaders/meshMaterial.frag");
-		m_program->link();
-	}
+	
+	// Create Shader (Do not release until VAO is created)
+	m_program = new QOpenGLShaderProgram();
+	m_program->addShaderFromSourceFile(QOpenGLShader::Vertex, "./shaders/mesh.vert");
+	m_program->addShaderFromSourceFile(QOpenGLShader::Fragment, "./shaders/meshMaterial.frag");
+	m_program->link();
+
+	// initialize select shader
+	m_program_selected = new QOpenGLShaderProgram();
+	m_program_selected->addShaderFromSourceFile(QOpenGLShader::Vertex, "./shaders/select_mesh.vert");
+	m_program_selected->addShaderFromSourceFile(QOpenGLShader::Fragment, "./shaders/select_frag.frag");
+	m_program_selected->link();
 
 	initLights();
 	furniture_models = m_assets->GetFurnitureModels();	
@@ -1044,7 +1054,8 @@ void DisplaySceneGLWidget::paintGL()
 	{
 		viewMatrix = camera->GetViewMatrix();	
 		projection.setToIdentity();
-		projection.perspective(camera->Zoom, (float)parameter->ScreenWidth / (float)parameter->ScreenHeight, 0.1f, 100.0f);
+		projection.perspective(camera->Zoom, (float)parameter->ScreenWidth / (float)parameter->ScreenHeight, 1.0f, 100.0f);
+		//projection.perspective(camera->Zoom, (float)parameter->ScreenWidth / (float)parameter->ScreenHeight, 0.1f, 100.0f);
 		//projection.perspective(camera->Zoom, 1384.0f/726.0f, 0.1f, 100.0f);
 
 		m_program->setUniformValue("viewMatrix", viewMatrix);
@@ -1080,6 +1091,43 @@ void DisplaySceneGLWidget::paintGL()
 
 	}
 	m_program->release();
+	//paintLight();	
+}
+
+void DisplaySceneGLWidget::paintSelect()
+{
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);	// 清除屏幕和深度缓存
+		
+	m_program_selected->bind();
+	{
+		viewMatrix = camera->GetViewMatrix();
+		projection.setToIdentity();
+		projection.perspective(camera->Zoom, (float)parameter->ScreenWidth / (float)parameter->ScreenHeight, 1.0f, 100.0f);
+		//projection.perspective(camera->Zoom, (float)parameter->ScreenWidth / (float)parameter->ScreenHeight, 0.1f, 100.0f);
+		//projection.perspective(camera->Zoom, 1384.0f/726.0f, 0.1f, 100.0f);
+
+		m_program_selected->setUniformValue("viewMatrix", viewMatrix);
+		m_program_selected->setUniformValue("projection", projection);
+
+		for (size_t i = 0; i < models.size(); i++)
+		{
+			if (dynamic_cast<DecorationModel*>(models[i]))
+			{
+				if (is_display_decoration)
+				{
+					m_program_selected->setUniformValue("code", models[i]->MID);
+					models[i]->Draw(m_program_selected);
+				}
+			}
+			else
+			{
+				m_program_selected->setUniformValue("code", models[i]->MID);
+				models[i]->Draw(m_program_selected);
+			}
+		}
+
+	}
+	m_program_selected->release();
 	//paintLight();	
 }
 
@@ -1119,7 +1167,24 @@ void DisplaySceneGLWidget::mousePressEvent(QMouseEvent* event)
 		mouseLastPos = QVector2D(event->localPos());
 	}
 
+	float mouse_x = mouseCurPos.x();
+	float mouse_y = mouseCurPos.y();
+	GLint viewport[4];
+	float res[4];	
+	paintSelect();
+	glGetIntegerv(GL_VIEWPORT, viewport);	
+	glReadPixels(mouse_x, viewport[3] - mouse_y, 1, 1, GL_RGBA, GL_FLOAT, &res);
+	int id = (int)(res[0]*255);
 
+	for (size_t i = 0; i < models.size(); i++)
+	{
+		auto m = models[i];
+		if (m->MID == id)
+		{
+			m->IsSelected = !m->IsSelected;
+		}
+	}
+	update();
 }
 QVector3D DisplaySceneGLWidget::getArcBallVector(int x, int y)
 {
