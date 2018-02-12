@@ -60,7 +60,7 @@ static const GLfloat vertices[] =
 	-0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,  0.0f, 1.0f
 };
 
-DisplaySceneGLWidget::DisplaySceneGLWidget(ProbLearning *learner, QWidget* parent)
+DisplaySceneGLWidget::DisplaySceneGLWidget(ProbLearning *learner, FloatingWidget* panel, QWidget* parent)
 	:QGLWidget(parent)
 	, m_vbo(QOpenGLBuffer::VertexBuffer)
 	, m_ebo(QOpenGLBuffer::IndexBuffer)
@@ -68,6 +68,7 @@ DisplaySceneGLWidget::DisplaySceneGLWidget(ProbLearning *learner, QWidget* paren
 	parameter = Parameter::GetParameterInstance();
 	m_assets = Assets::GetAssetsInstance();
 	m_learner = learner;
+	m_small_object_panel = panel;
 	camera = new Camera(QVector3D(1.29,1.41,4.6),QVector3D(0,1,0),-88,-13.25);
 	Lights = Utility::ParseLights();
 
@@ -980,6 +981,11 @@ void DisplaySceneGLWidget::InitSmallObjects()
 
 void DisplaySceneGLWidget::PropagateUserPreferences()
 {
+	QVector<QPair<QPair<CatName, CatName>, Relation>> height_pref, medium_pref, depth_pref;
+	medium_pref = parsePrefFromText(m_small_object_panel->TextMediumPref->toPlainText());
+	depth_pref = parsePrefFromText(m_small_object_panel->TextDepthPref->toPlainText());
+	height_pref = parsePrefFromText(m_small_object_panel->TextHeightPref->toPlainText());
+	small_object_arranger->UpdateUserPreferences(height_pref, medium_pref, depth_pref);
 	small_object_arranger->PropagateUserPreference();
 }
 
@@ -992,6 +998,32 @@ void DisplaySceneGLWidget::ArrangeDecorationsActive()
 	}
 	update();
 
+}
+
+QVector<QPair<QPair<CatName, CatName>, Relation>> DisplaySceneGLWidget::parsePrefFromText(QString txt)
+{
+	QVector<QPair<QPair<CatName, CatName>, Relation>> pref;
+	QStringList lines = txt.split("\n");
+	for (size_t i = 0; i < lines.size(); i++)
+	{
+		QStringList strs = lines[i].split(" ");
+		if (strs.size() == 3)
+		{
+			auto cat_A = strs[0];
+			auto rel = strs[1];
+			auto cat_B = strs[2];
+			Relation r;
+			if (rel == tr("="))
+				r = Relation::Equal;
+			else if (rel == tr(">"))
+				r = Relation::Greater;
+			else if (rel == tr("<"))
+				r = Relation::Less;
+			pref.push_back(qMakePair(qMakePair(cat_A, cat_B), r));
+		}
+	}
+
+	return pref;
 }
 
 void DisplaySceneGLWidget::initializeGL()
@@ -1054,8 +1086,8 @@ void DisplaySceneGLWidget::paintGL()
 	{
 		viewMatrix = camera->GetViewMatrix();	
 		projection.setToIdentity();
-		projection.perspective(camera->Zoom, (float)parameter->ScreenWidth / (float)parameter->ScreenHeight, 1.0f, 100.0f);
-		//projection.perspective(camera->Zoom, (float)parameter->ScreenWidth / (float)parameter->ScreenHeight, 0.1f, 100.0f);
+		//projection.perspective(camera->Zoom, (float)parameter->ScreenWidth / (float)parameter->ScreenHeight, 1.0f, 100.0f);
+		projection.perspective(camera->Zoom, (float)parameter->ScreenWidth / (float)parameter->ScreenHeight, 0.1f, 100.0f);
 		//projection.perspective(camera->Zoom, 1384.0f/726.0f, 0.1f, 100.0f);
 
 		m_program->setUniformValue("viewMatrix", viewMatrix);
@@ -1175,17 +1207,66 @@ void DisplaySceneGLWidget::mousePressEvent(QMouseEvent* event)
 	glGetIntegerv(GL_VIEWPORT, viewport);	
 	glReadPixels(mouse_x, viewport[3] - mouse_y, 1, 1, GL_RGBA, GL_FLOAT, &res);
 	int id = (int)(res[0]*255);
-
 	for (size_t i = 0; i < models.size(); i++)
 	{
 		auto m = models[i];
-		if (m->MID == id)
+		if (m->MID == id && dynamic_cast<DecorationModel*>(m))
 		{
-			m->IsSelected = !m->IsSelected;
-		}
+			handleSelectedModel(id, (dynamic_cast<DecorationModel*>(m))->Type);
+			//cur_selected_model_cat
+		}		
 	}
+
+		
 	update();
 }
+
+void DisplaySceneGLWidget::handleSelectedModel(int id, QString cat)
+{
+	if (selected_model_ids.size() < 2 && selected_model_cats.size() < 2)
+	{
+		selected_model_ids.enqueue(id);
+		selected_model_cats.enqueue(cat);		
+	}
+	else
+	{
+		selected_model_ids.dequeue();
+		selected_model_ids.enqueue(id);
+		selected_model_cats.dequeue();
+		selected_model_cats.enqueue(cat);
+	}
+	for (size_t i = 0; i < models.size(); i++)
+	{
+		models[i]->IsSelected = false;
+	}
+	
+	for (size_t i = 0; i < models.size(); i++)
+	{
+		for (size_t q = 0; q < selected_model_ids.size(); q++)
+		{
+			auto cur_id = selected_model_ids[q];
+			auto m = models[i];
+			if (m->MID == cur_id)
+				m->IsSelected = true;			
+		}
+	}
+
+	// change text cat A and B
+	QString cat_A(""), cat_B("");	
+	if (selected_model_cats.size() == 1)
+	{
+		cat_A = selected_model_cats[0];
+		cat_B = tr("");
+	}
+	else if (selected_model_cats.size() == 2)
+	{
+		cat_A = selected_model_cats[0];
+		cat_B = selected_model_cats[1];
+	}	
+	m_small_object_panel->TextCatA->setText(cat_A);
+	m_small_object_panel->TextCatB->setText(cat_B);
+}
+
 QVector3D DisplaySceneGLWidget::getArcBallVector(int x, int y)
 {
 	QVector3D P = QVector3D(1.0*x / parameter->ScreenWidth * 2 - 1.0,

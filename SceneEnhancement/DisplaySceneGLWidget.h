@@ -15,6 +15,8 @@
 #include "WallModel.h"
 #include "FloorModel.h"
 #include "SmallObjectArrange.h"
+#include <QQueue>
+#include "floatingwidget.h"
 
 class ProbLearning;
 
@@ -22,7 +24,7 @@ class DisplaySceneGLWidget :public QGLWidget, protected QOpenGLFunctions
 {
 	Q_OBJECT
 public:
-	DisplaySceneGLWidget(ProbLearning *learner,QWidget *parent = 0);
+	DisplaySceneGLWidget(ProbLearning *learner, FloatingWidget* panel, QWidget *parent = 0);
 	~DisplaySceneGLWidget();
 
 	void teardownGL() const;
@@ -70,6 +72,7 @@ public:
 	void InitSmallObjects();
 	void PropagateUserPreferences();
 	void ArrangeDecorationsActive();
+	QVector<QPair<QPair<CatName, CatName>, Relation>> parsePrefFromText(QString txt);
 protected:
 	void initializeGL();
 	void paintGL();
@@ -90,6 +93,7 @@ private:
 	Parameter *parameter;
 	Assets* m_assets;
 	ProbLearning *m_learner;
+	FloatingWidget *m_small_object_panel;
 
 	// render
 	QOpenGLBuffer m_vbo;
@@ -140,7 +144,9 @@ private:
 
 	// small object arrangement
 	SmallObjectArrange *small_object_arranger;
-
+	void handleSelectedModel(int id, QString cat);
+	QQueue<int> selected_model_ids;
+	QQueue<QString> selected_model_cats;
 };
 
 

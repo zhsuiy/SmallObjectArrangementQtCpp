@@ -19,14 +19,14 @@ MainWindow::MainWindow(QWidget *parent)
 
 	
 	ProbLearning *problearner = new ProbLearning();
-	displaySceneWidget = new DisplaySceneGLWidget(problearner);
+	FloatingWidget *smallObjectPanel = new FloatingWidget();
+	displaySceneWidget = new DisplaySceneGLWidget(problearner, smallObjectPanel);
 	displaySceneWidget->setFixedWidth(1400);
 	displaySceneWidget->setFixedHeight(800);
 	main_layout->addWidget(displaySceneWidget);		
 	setWindowTitle("Scene Enhancement");
-	centralWidget->setLayout(main_layout);
-	FloatingWidget *test = new FloatingWidget();
-	main_layout->addWidget(test);
+	centralWidget->setLayout(main_layout);	
+	main_layout->addWidget(smallObjectPanel);
 
 	// menu
 	MenuFile = menuBar()->addMenu(tr("File"));

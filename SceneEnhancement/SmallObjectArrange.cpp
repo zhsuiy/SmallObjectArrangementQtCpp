@@ -63,20 +63,25 @@ void SmallObjectArrange::InitArranger()
 
 void SmallObjectArrange::UpdateUserPreferences(QVector<QPair<QPair<CatName, CatName>, Relation>> height_pref, QVector<QPair<QPair<CatName, CatName>, Relation>> medium_pref, QVector<QPair<QPair<CatName, CatName>, Relation>> depth_pref)
 {
-	user_preferences_height.append(height_pref);
+	user_preferences_height = height_pref;
+	user_preferences_medium = medium_pref;
+	user_preferences_depth = depth_pref;
+	/*user_preferences_height.append(height_pref);
 	user_preferences_medium.append(medium_pref);
-	user_preferences_depth.append(depth_pref);
+	user_preferences_depth.append(depth_pref);*/
 }
 
 void SmallObjectArrange::PropagateUserPreference()
 {
-	QVector<QPair<QPair<CatName, CatName>, Relation>> pref;
+	//QVector<QPair<QPair<CatName, CatName>, Relation>> pref;
 	//pref.push_back(qMakePair(qMakePair(QString("pencil"), QString("lamp")), Greater));
-	pref.push_back(qMakePair(qMakePair(QString("pen"),QString("notebook")), Greater));
-	pref.push_back(qMakePair(qMakePair(QString("book"), QString("notebook")), Less));
+	//pref.push_back(qMakePair(qMakePair(QString("pen"),QString("notebook")), Greater));
+	//pref.push_back(qMakePair(qMakePair(QString("book"), QString("notebook")), Less));
 	//pref.push_back(qMakePair(qMakePair(QString("minifigure"), QString("figurine")), Equal));
 	//pref.push_back(qMakePair(qMakePair(QString("notebook"), QString("lamp")), Greater));
-	propagateUserPreference(cat_pair_depth, cat_pair_equal_depth, pref);
+	propagateUserPreference(cat_pair_depth, cat_pair_equal_depth, user_preferences_depth);
+	propagateUserPreference(cat_pair_medium, cat_pair_equal_medium, user_preferences_medium);
+	propagateUserPreference(cat_pair_height, cat_pair_equal_height, user_preferences_height);
 	//propagateUserPreference(cat_pair_height, cat_pair_equal_height, pref);
 
 	exportPairwiseProb(cat_pair_height, QString("./small-object-results/height-pref-propagated.txt"));
