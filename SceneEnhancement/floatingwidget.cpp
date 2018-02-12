@@ -24,7 +24,7 @@ FloatingWidget::FloatingWidget(QWidget * parent) : QWidget(parent)
 	QGroupBox *type_groupBox = new QGroupBox(tr("Type of Preference"));
 	RadioMedium = new QRadioButton(tr("Medium Preference"));
 	RadioDepth = new QRadioButton(tr("Depth Preference"));
-	RadioHeight = new QRadioButton(tr("Height Preference"));
+	RadioHeight = new QRadioButton(tr("Height Preference"));	
 	RadioMedium->setChecked(true);
 	QVBoxLayout *vbox = new QVBoxLayout;
 	vbox->addWidget(RadioMedium);
@@ -38,7 +38,7 @@ FloatingWidget::FloatingWidget(QWidget * parent) : QWidget(parent)
 	QGroupBox *cata_gb = new QGroupBox(tr("Category A"));
 	QHBoxLayout *cata_hbox = new QHBoxLayout;
 	TextCatA = new QTextEdit();
-	TextCatA->setText("Hello, world!");
+	//TextCatA->setText("Hello, world!");
 	cata_hbox->addWidget(TextCatA);	
 	cata_gb->setLayout(cata_hbox);
 		
@@ -46,7 +46,7 @@ FloatingWidget::FloatingWidget(QWidget * parent) : QWidget(parent)
 	QGroupBox *catb_gb = new QGroupBox(tr("Category B"));
 	QHBoxLayout *catb_hbox = new QHBoxLayout;
 	TextCatB = new QTextEdit();
-	TextCatB->setText("notebook");
+	//TextCatB->setText("notebook");
 	catb_hbox->addWidget(TextCatB);
 	catb_gb->setLayout(catb_hbox);
 
@@ -93,9 +93,9 @@ FloatingWidget::FloatingWidget(QWidget * parent) : QWidget(parent)
 
 
 	main_layout->addWidget(type_groupBox);
-	main_layout->addWidget(cata_gb);
-	main_layout->addWidget(relation_groupBox);
+	main_layout->addWidget(cata_gb);	
 	main_layout->addWidget(catb_gb);
+	main_layout->addWidget(relation_groupBox);
 	main_layout->addWidget(btn_insert);
 	main_layout->addWidget(m_gb);
 	main_layout->addWidget(d_gb);
