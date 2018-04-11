@@ -352,10 +352,10 @@ double SupportRegion::getCost(QVector<DecorationModel*> models, QMap<int, QPair<
 	F += 10 * calculate_boundary_test(models);
 
 	// 关于前后order
-	F += 4 * calculate_decoration_depth_orders(models, decoration_XZ, arranger);
+	F += 10 * calculate_decoration_depth_orders(models, decoration_XZ, arranger);
 
 	// 关于左右order
-	F += 4 * calculate_decoration_medial_orders(models, decoration_XZ, arranger);
+	F += 10 * calculate_decoration_medial_orders(models, decoration_XZ, arranger);
 
 	// 相同物体位置应相近
 	//F += 2 * calculate_same_decoration_pos(models, decoration_XZ);
@@ -538,13 +538,18 @@ double SupportRegion::calculate_decoration_depth_orders(QVector<DecorationModel*
 				// equal cost:
 				// record how the two objects are different
 				double equal_cost = getPairZOrderCost(decoration_xz_ratios[i],
-					decoration_xz_ratios[j], true);
+					decoration_xz_ratios[j], true);				
+				// 放大用户的影响
+				equal_ij = equal_ij == 1 ? 10 : equal_ij;
 				f += equal_ij*equal_cost;
+
 				// record how 
 				// j should be back, i should be front
 				// using depth_front_ij to punish how j is wrongly put in front of i
 				double unequal_cost = getPairZOrderCost(decoration_xz_ratios[j],
 					decoration_xz_ratios[i]);
+				// 放大用户的影响
+				depth_front_ij = depth_front_ij == 1 ? 10 : depth_front_ij;
 				f += depth_front_ij* unequal_cost;
 				norm_n++;
 			}
@@ -616,9 +621,9 @@ double SupportRegion::getPairZOrderCost(QPair<double, double> back, QPair<double
 	}
 	if (isSame && ratioback != ratiofront)
 	{		
-		cost = 1.0 / (1.0 + exp(-(abs(ratioback - ratiofront))));		
+		cost = 1.0 / (1.0 + exp(-(abs(ratioback - ratiofront))));
 	}
-	return cost;	
+	return cost;
 }
 
 double SupportRegion::getSingleZOrderCost(QPair<double, double> xz)
@@ -746,12 +751,15 @@ double SupportRegion::calculate_decoration_medial_orders(QVector<DecorationModel
 				// record how the two objects are different
 				double equal_cost = getPairMedialOrderCost(decoration_xz_ratios[i],
 					decoration_xz_ratios[j], true);
+				// 放大用户的影响
+				equal_ij = equal_ij == 1 ? 10 : equal_ij;
 				f += equal_ij*equal_cost;
 				// record how 
 				// j should be far from medium, i should be near medium
 				// using medium_center_ij to punish how j is wrongly put nearer than i to medium
 				double unequal_cost = getPairMedialOrderCost(decoration_xz_ratios[j],
 					decoration_xz_ratios[i]);
+				medium_center_ij = medium_center_ij == 1 ? 10 : medium_center_ij;
 				f += medium_center_ij* unequal_cost;
 				norm_n++;
 			}

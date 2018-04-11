@@ -106,5 +106,5 @@ void BoundingBox::updateVertices()
 void BoundingBox::updateTextures()
 {
 	MeshMaterial = new Material();
-	MeshMaterial->Diffuse = new MaterialElement(QVector3D(0.5,0.5,0.8));
+	MeshMaterial->Diffuse = new MaterialElement(QVector3D(1,0.1,0.1));
 }

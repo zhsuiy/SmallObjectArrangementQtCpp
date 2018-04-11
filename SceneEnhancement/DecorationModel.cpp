@@ -92,7 +92,8 @@ void DecorationModel::Draw(QOpenGLShaderProgram* program)
 	{
 		boundingBox->Draw(program);
 	}
-	if (boundingBox != nullptr && IsSelected)
+	if (boundingBox != nullptr && IsSelected 
+		&& Parameter::GetParameterInstance()->IsDrawSelectedBoundingBox)
 	{
 		boundingBox->Draw(program);
 	}

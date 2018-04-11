@@ -45,13 +45,14 @@ public:
 	
 private:
 // hyper parameters
-	float m_pair_pair_sim_threshold = 0.9;
-	int m_neighbor_num = 20;
+	QString uid = "r30-d10";
+	float m_pair_pair_sim_threshold = 0;
+	int m_neighbor_num = 10;
 	// how many rounds to get extend variables when propagating uneuqal prefrences
 	int m_variable_round_unequal = 2;
 	int m_variable_round_equal = 2;
 	float m_lambda_equal = 10;
-	float m_lambda_unequal = 100;
+	float m_lambda_unequal = 10;
 // members
 	Parameter *m_para;	
 	QVector<CatName> all_cats;
@@ -83,8 +84,10 @@ private:
 	// from user
 	QVector<QPair<QPair<CatName, CatName>, Relation>> user_preferences_height;
 	QVector<QPair<QPair<CatName, CatName>, Relation>> user_preferences_medium;
-	QVector<QPair<QPair<CatName, CatName>, Relation>> user_preferences_depth;	
+	QVector<QPair<QPair<CatName, CatName>, Relation>> user_preferences_depth;
 
+	// all variables
+	QVector<QPair<int, int>> all_variables;
 // methods
 	void init();
 	void initCategories();
@@ -95,6 +98,8 @@ private:
 	void initCatMostSim();
 	void initConnectedPairs();
 	void initCooccurPairs();
+	// for active learning
+	void initAllVariables();
 
 	// active learning
 	void propagateUserPreference(QVector<QVector<float>> &pair_pref,
@@ -102,7 +107,7 @@ private:
 		QVector<QPair<QPair<CatName, CatName>, Relation>> user_pref);
 	
 
-// assisting methods
+	// assisting methods
 	QVector<QPair<QPair<QString, QString>, float>> readCountFromFile(QString path);
 	void getInitialProb(QVector<QVector<float>> &cat_pair_pref, QVector<QVector<float>> &cat_pair_equal, QVector<QVector<float>> &cat_pair_uncertain, QString path_pref, QString path_equal);
 	// store the common indices of each cat index
@@ -118,6 +123,10 @@ private:
 
 	// solve quadratic programming
 	QVector<float> getPropagatedResults(QVector<QPair<int, int>> &variables, QVector<float> labels,
+		QVector<QVector<float>> &pair_info, float lambda);
+	QVector<float> getPropagatedResultsPref(QVector<QPair<int, int>> &variables, QVector<float> labels,
+		QVector<QVector<float>> &pair_info, float lambda);
+	QVector<float> getPropagatedResultsFull(QVector<QPair<int, int>> &variables, QVector<float> labels,
 		QVector<QVector<float>> &pair_info, float lambda);
 	void updateEqualProbElementwise(QVector<QPair<int, int>> indices, QVector<float> new_equal,
 		QVector<QVector<float>> &pair_pref, QVector<QVector<float>>  &pair_equal);

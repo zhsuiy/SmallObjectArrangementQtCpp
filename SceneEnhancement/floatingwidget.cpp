@@ -50,7 +50,6 @@ FloatingWidget::FloatingWidget(QWidget * parent) : QWidget(parent)
 	catb_hbox->addWidget(TextCatB);
 	catb_gb->setLayout(catb_hbox);
 
-
 	// the relationship
 	QGroupBox *relation_groupBox = new QGroupBox(tr("Relation between A and B"));
 	RadioGreater = new QRadioButton(tr(">"));
@@ -65,7 +64,6 @@ FloatingWidget::FloatingWidget(QWidget * parent) : QWidget(parent)
 	relation_groupBox->setLayout(hbox);
 
 	QPushButton *btn_insert = new QPushButton(tr("&Insert"));
-
 
 	// Medium Preferences
 	QGroupBox *m_gb = new QGroupBox(tr("Medium preferences"));
@@ -90,7 +88,6 @@ FloatingWidget::FloatingWidget(QWidget * parent) : QWidget(parent)
 	//TextHeightPref->setText(tr("height"));
 	hp_hbox->addWidget(TextHeightPref);
 	h_gb->setLayout(hp_hbox);
-
 
 	main_layout->addWidget(type_groupBox);
 	main_layout->addWidget(cata_gb);	

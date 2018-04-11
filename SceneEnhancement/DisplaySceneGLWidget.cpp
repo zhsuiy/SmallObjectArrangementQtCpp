@@ -894,6 +894,20 @@ void DisplaySceneGLWidget::UpdateHeightOrderConstraints()
 void DisplaySceneGLWidget::UpdateDecorationScales()
 {
 	m_assets->UpdateDecorationScales();
+	for (size_t i = 0; i < models.size(); i++)
+	{
+		if (dynamic_cast<DecorationModel*>(models[i]))
+		{
+			auto m = dynamic_cast<DecorationModel*>(models[i]);
+			if (m_assets->DecorationScales.contains(m->Type))
+			{
+				m->SetScale(m_assets->DecorationScales[m->Type]);
+				m->SetModelMatrix(); // setup modelmatrix for rendering
+				m->UpdateBoundingBoxWorldCoordinates();
+			}			
+		}
+	}
+	update();
 }
 
 void DisplaySceneGLWidget::ExportScene()
@@ -970,8 +984,12 @@ void DisplaySceneGLWidget::RenderObjects()
 		QImage img = this->grabFrameBuffer();
 		QString imgname = "D:/dataset/SceneSynthesis/sceneSynthesisDatabase/databaseFull/process/renderedModels/" + filename + ".png";
 		img.save(imgname);
-	}
-	
+	}	
+}
+
+void DisplaySceneGLWidget::ToggleDrawingSelectedSmallObjectBB()
+{
+	parameter->IsDrawSelectedBoundingBox = !parameter->IsDrawSelectedBoundingBox;
 }
 
 void DisplaySceneGLWidget::InitSmallObjects()

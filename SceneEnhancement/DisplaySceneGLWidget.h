@@ -67,6 +67,7 @@ public:
 
 	// render objects
 	void RenderObjects();
+	void ToggleDrawingSelectedSmallObjectBB();
 
 	// small object arrangement
 	void InitSmallObjects();

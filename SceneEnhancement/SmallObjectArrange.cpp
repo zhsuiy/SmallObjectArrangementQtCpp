@@ -103,12 +103,13 @@ void SmallObjectArrange::init()
 	initCatMostSim();
 	initCooccurPairs();
 	initConnectedPairs();
+	initAllVariables();
 	
 }
 
 void SmallObjectArrange::initCategories()
 {
-	all_cats = Utility::ParseStringFromFile(QString("./small-object-info/vocab/cat-r30-d10.txt"));
+	all_cats = Utility::ParseStringFromFile(QString("./small-object-info/vocab/cat-%1.txt").arg(uid));
 	m_para->DecorationTypes = all_cats;
 	for (size_t i = 0; i < all_cats.size(); i++)
 	{
@@ -173,9 +174,9 @@ void SmallObjectArrange::initCatSimMatrix()
 	int n = all_cats.size();
 	for (size_t i = 0; i < n; i++)
 	{
-		cat_word2vec_similarity.push_back(QVector<float>(n));
+		cat_word2vec_similarity.push_back(QVector<float>(n,0.0));
 	}	
-	QString path = "./small-object-info/sim/sim-r30-d10.txt";
+	QString path = QString("./small-object-info/sim/sim-with-size-%1.txt").arg(uid);
 	QFile *file = new QFile(path);
 	if (!file->open(QIODevice::ReadWrite | QIODevice::Text))
 		std::cout << "Can't open file " + path.toStdString() << endl;
@@ -218,7 +219,7 @@ void SmallObjectArrange::initCatMostSim()
 	}
 	int n = all_cats.size();
 	
-	QString path = "./small-object-info/most-sim-word/most-sim-word-r30-d10.txt";
+	QString path = QString("./small-object-info/most-sim-word/most-sim-word-with-size-%1.txt").arg(uid);
 	QFile *file = new QFile(path);
 	if (!file->open(QIODevice::ReadWrite | QIODevice::Text))
 		std::cout << "Can't open file " + path.toStdString() << endl;
@@ -308,9 +309,12 @@ void SmallObjectArrange::propagateUserPreference(QVector<QVector<float>> &pair_p
 	{
 		// scale P to (0-1) temporarily
 		scalePrefProbToOne(pair_pref);
-		auto new_pref = getPropagatedResults(unequal_variables, unequal_labels, pair_pref, m_lambda_unequal);
+		//auto new_pref = getPropagatedResults(unequal_variables, unequal_labels, pair_pref, m_lambda_unequal);
+		//auto new_pref = getPropagatedResultsFull(unequal_variables, unequal_labels, pair_pref, m_lambda_unequal);
+		auto new_pref = getPropagatedResultsPref(unequal_variables, unequal_labels, pair_pref, m_lambda_unequal);
 		// use new_pref to fill pair_pref, remember to set pair_equal as well
 		updatePrefProbElementwise(unequal_variables, new_pref, pair_pref, pair_equal);
+		//updatePrefProbElementwise(all_variables, new_pref, pair_pref, pair_equal);
 		// assure that pij + pji + eij = 1
 		updatePrefWithEqual(pair_pref, pair_equal);
 	}
@@ -344,6 +348,16 @@ QVector<float> SmallObjectArrange::getPropagatedResults(QVector<QPair<int, int>>
 		}
 		start_pos += curent_n_var;
 
+		for (size_t i = 0; i < new_variables.size(); i++)
+		{
+			auto cur = new_variables[i];
+			int index_of_reverse = new_variables.indexOf(qMakePair(cur.second, cur.first));
+			if (index_of_reverse != -1)
+			{
+				new_variables.removeAt(index_of_reverse);
+			}
+		}
+
 		// delete duplicate variables keep ij, remove ji
 		for (size_t k = 0; k < variables.size(); k++)
 		{
@@ -358,10 +372,11 @@ QVector<float> SmallObjectArrange::getPropagatedResults(QVector<QPair<int, int>>
 		}
 		variables.append(new_variables);
 		round++;
-		if (round == m_variable_round_unequal)
+		// extend to all
+		/*if (round == m_variable_round_unequal)
 		{
 			break;
-		}
+		}*/
 		if (variables.size() == curent_n_var) // no new element
 		{
 			break;
@@ -388,6 +403,7 @@ QVector<float> SmallObjectArrange::getPropagatedResults(QVector<QPair<int, int>>
 	scales.setlength(n);
 	bndl.setlength(n);
 	bndu.setlength(n);
+	
 	QVector<float> d_rows;
 	for (size_t i = 0; i < n; i++)
 	{
@@ -396,7 +412,8 @@ QVector<float> SmallObjectArrange::getPropagatedResults(QVector<QPair<int, int>>
 		{
 			auto sim = getPairPairSim(variables[i].first, variables[i].second,
 				variables[j].first, variables[j].second);
-			W(i, j) = 0.001*exp(10 * sim);
+			W(i, j) = sim;
+			//W(i, j) = 0.001*exp(10 * sim);
 			//W(i, j) = sim == 1 ? 1000 : (sim / (1 - sim))*(sim / (1 - sim));
 			//cout << "Similarity: " << W(i, j) << endl;
 			D(i, j) = 0.0;
@@ -468,32 +485,404 @@ QVector<float> SmallObjectArrange::getPropagatedResults(QVector<QPair<int, int>>
 
 	minqpsetscale(state, scales);
 
+	minqpsetalgobleic(state, 0.0, 0.0, 0.0, 0);
+	minqpoptimize(state);
+	minqpresults(state, x, rep);
+	printf("%s\n", x.tostring(4).c_str()); // EXPECTED: [1.500,0.500]
+	printf("%d\n", int(rep.terminationtype)); // EXPECTED: 4
+	
+	for (size_t i = 0; i < x.length(); i++)
+	{
+		results.push_back(x[i]);
+	}
+	return results;
+}
+
+// allow ij, ji, add condition ij + ji = 1
+QVector<float> SmallObjectArrange::getPropagatedResultsPref(QVector<QPair<int, int>>& variables, QVector<float> labels, QVector<QVector<float>>& pair_info, float lambda)
+{
+	// extend variables
+	// using current variables to find connected pairs
+	// haven't considered the situation that categories in current room
+	int start_pos = 0;
+	int round = 0;
+	int n_labels = labels.size();
+	while (true)
+	{
+		int curent_n_var = variables.size();
+		QVector<QPair<int, int>> new_variables;
+
+		for (size_t i = start_pos; i < variables.size(); i++)
+		{
+			if (connected_cat_pair_indices.contains(variables[i]))
+			{
+				auto connected_pairs = connected_cat_pair_indices[variables[i]];
+				for each (auto pair in connected_pairs)
+				{
+					if (!new_variables.contains(pair) && !variables.contains(pair))
+						new_variables.push_back(pair);
+				}
+			}
+		}
+		start_pos += curent_n_var;
+
+		/*for (size_t i = 0; i < new_variables.size(); i++)
+		{
+			auto cur = new_variables[i];
+			int index_of_reverse = new_variables.indexOf(qMakePair(cur.second, cur.first));
+			if (index_of_reverse != -1)
+			{
+				new_variables.removeAt(index_of_reverse);
+			}
+		}*/
+
+		// delete duplicate variables keep ij, remove ji
+		//for (size_t k = 0; k < variables.size(); k++)
+		//{
+		//	auto cur = variables[k];
+		//	int index_of_reverse = new_variables.indexOf(qMakePair(cur.second, cur.first));
+		//	//cout << "k:" << k << "  reverse index:" << index_of_reverse << endl;
+		//	if (index_of_reverse != -1)
+		//	{
+		//		//cout << "Inside k:" << k << "  reverse index:" << index_of_reverse << endl;
+		//		new_variables.removeAt(index_of_reverse);
+		//	}
+		//}
+		variables.append(new_variables);
+		round++;
+		// extend to all
+		/*if (round == m_variable_round_unequal)
+		{
+		break;
+		}*/
+		if (variables.size() == curent_n_var) // no new element
+		{
+			break;
+		}
+
+		cout << "increased " << variables.size() - curent_n_var
+			<< " variables" << endl;
+	}
+
+	// remove repeat
+	for (size_t i = 0; i < variables.size(); i++)
+	{
+		auto cur = variables[i];
+		int index_of_reverse = variables.indexOf(qMakePair(cur.second, cur.first));
+		if (index_of_reverse != -1)
+		{
+			variables.removeAt(index_of_reverse);
+		}
+	}
+
+	// add ji
+	/*QVector<QPair<int, int>> variables_reverse;
+	for (size_t i = 0; i < variables.size(); i++)
+	{
+		variables_reverse.push_back(qMakePair(variables[i].second, variables[i].first));
+	}
+	variables.append(variables_reverse);*/
+	cout << "total variables: " << variables.size() << endl;
+	int n = variables.size();
+	//int uniq_n = variables_reverse.size();
+	QVector<float> results;
+	// construct quadratic programming problem	
+	real_2d_array W, D, Lambda, G;
+	real_1d_array bTLambda; // f
+	real_1d_array scales;
+	real_1d_array bndl;
+	real_1d_array bndu;
+	real_2d_array equal1condition;
+	integer_1d_array ct;
+	//float dlambda = 10;
+	W.setlength(n, n);
+	D.setlength(n, n);
+	Lambda.setlength(n, n);
+	G.setlength(n, n);
+	bTLambda.setlength(n);
+	scales.setlength(n);
+	bndl.setlength(n);
+	bndu.setlength(n);
+	//equal1condition.setlength(uniq_n, n + 1);
+	//ct.setlength(uniq_n);
+
+	//for (size_t i = 0; i < uniq_n; i++)
+	//{
+	//	for (size_t j = 0; j < n + 1; j++)
+	//	{
+	//		equal1condition(i, j) = 0;
+	//	}
+	//}
+	//for (size_t i = 0; i < uniq_n; i++)
+	//{
+	//	// ii: ij, i+uniq_n: ji
+	//	equal1condition(i, i) = equal1condition(i, i + uniq_n) = 1;
+	//	// ij + ji = 1
+	//	equal1condition(i, n) = 1;
+	//	ct(i) = 0; // equal
+	//}
+
+	QVector<float> d_rows;
+	for (size_t i = 0; i < n; i++)
+	{
+		float sum = 0.0;
+		for (size_t j = 0; j < n; j++)
+		{
+			auto sim = getPairPairSim(variables[i].first, variables[i].second,
+				variables[j].first, variables[j].second);
+			W(i, j) = sim;
+			//W(i, j) = 0.001*exp(10 * sim);
+			//W(i, j) = sim == 1 ? 1000 : (sim / (1 - sim))*(sim / (1 - sim));
+			//cout << "Similarity: " << W(i, j) << endl;
+			D(i, j) = 0.0;
+			Lambda(i, j) = 0.0;
+			sum += W(i, j);
+		}
+		d_rows.push_back(sum);
+	}
+	for (size_t i = 0; i < n; i++)
+	{
+		D(i, i) = d_rows[i];
+		Lambda(i, i) = lambda;
+	}
+	for (size_t i = 0; i < n; i++)
+	{
+		for (size_t j = 0; j < n; j++)
+		{
+			G(i, j) = D(i, j) - W(i, j) + Lambda(i, j);
+			//cout << "G(i,j): " << i <<"," << j << "\t" << G(i,j) << endl;
+		}
+	}
+	// set box constraints, labeled variables fixed 0 or 1, unlabeled [0,1]
+	// labeled
+	for (size_t i = 0; i < n_labels; i++)
+	{
+		bndl(i) = labels[i];
+		bndu(i) = labels[i];
+	}
+	// unlabelled
+	for (size_t i = n_labels; i < n; i++)
+	{
+		bndl(i) = 0.0;
+		//float equal_prob = pair_equal[variables[i].first][variables[i].second];		
+		//bndu(i) = equal_prob == -1 ? 1.0 : 1 - equal_prob;
+		bndu(i) = 1.0;
+	}
+	// set btlambda and scales
+	int n_notindatabase = 0;
+	for (size_t i = 0; i < n; i++)
+	{
+		scales(i) = 1.0;
+		int i1 = variables[i].first;
+		int i2 = variables[i].second;
+		// remember to set pair_pref when values are calculated
+		if (pair_info[i1][i2] == -1)
+		{
+			bTLambda(i) = 0.0;
+			n_notindatabase++;
+		}
+		else
+		{
+			//cout << "pair_pref[i1][i2] = " << pair_pref[i1][i2] << endl;
+			bTLambda(i) = -pair_info[i1][i2] * lambda;
+		}
+	}
+	cout << "Number of not in database: " << n_notindatabase << endl;
+
+	// solve
+	real_1d_array x;
+	minqpstate state;
+	minqpreport rep;
+
+	// create solver, set quadratic/linear terms
+	minqpcreate(n, state);
+	minqpsetquadraticterm(state, G);
+	minqpsetlinearterm(state, bTLambda);
+	//minqpsetlc(state, equal1condition, ct);
+	minqpsetbc(state, bndl, bndu);
+
+	minqpsetscale(state, scales);
+	//minqpsetalgodenseaul(state, 1.0e-9, 1.0e+4, 5);
+	minqpsetalgobleic(state, 0.0, 0.0, 0.0, 0);
+	minqpoptimize(state);
+	minqpresults(state, x, rep);
+	printf("%s\n", x.tostring(4).c_str()); // EXPECTED: [1.500,0.500]
+	printf("%d\n", int(rep.terminationtype)); // EXPECTED: 4
+
+	for (size_t i = 0; i < x.length(); i++)
+	{
+		results.push_back(x[i]);
+	}
+	return results;
+}
+
+// too much memory
+QVector<float> SmallObjectArrange::getPropagatedResultsFull(QVector<QPair<int, int>>& variables, QVector<float> labels, QVector<QVector<float>>& pair_info, float lambda)
+{
+	// extend variables
+	// using current variables to find connected pairs
+	// haven't considered the situation that categories in current room
+	int start_pos = 0;
+	int round = 0;
+	int n_labels = labels.size();
+	QVector<int> variable_index;	
+	int n_cat = all_cats.size();	
+	int uniq_n = all_variables.size()/2;
+
+	for (size_t i = 0; i < variables.size(); i++)
+	{
+		auto vi = variables[i];
+		for (size_t j = 0; j < all_variables.size(); j++)
+		{
+			auto vj = all_variables[j];
+			if (vi.first == vj.first && vi.second == vj.second)
+				variable_index.push_back(j);
+		}
+	}
+	
+	cout << "total variables: " << all_variables.size() << endl;
+	int n = all_variables.size();
+	QVector<float> results;
+	// construct quadratic programming problem	
+	sparsematrix G, W, D, Lambda;
+	//real_2d_array G, W, D, Lambda;
+	real_1d_array bTLambda; // f
+	real_1d_array scales;
+	real_1d_array bndl;
+	real_1d_array bndu;
+	real_2d_array equal1condition;
+	integer_1d_array ct;
+	//float dlambda = 10;
+	//W.setlength(n, n);
+	//D.setlength(n, n);
+	//Lambda.setlength(n, n);
+	sparsecreate(n, n, n, Lambda);
+	sparsecreate(n, n, 0, G);
+	sparsecreate(n, n, 0, W);
+	sparsecreate(n, n, n, D);
+	//G.setlength(n, n);
+	bTLambda.setlength(n);
+	scales.setlength(n);
+	bndl.setlength(n);
+	bndu.setlength(n);
+	equal1condition.setlength(uniq_n, n + 1);
+	ct.setlength(uniq_n);
+
+	for (size_t i = 0; i < uniq_n; i++)
+	{
+		for (size_t j = 0; j < n+1; j++)
+		{
+			equal1condition(i, j) = 0;
+		}		
+	}
+	
+	for (size_t i = 0; i < uniq_n; i++)
+	{
+		// ii: ij, i+uniq_n: ji
+		equal1condition(i, i) = equal1condition(i, i + uniq_n) = 1;
+		// ij + ji = 1
+		equal1condition(i, n) = 1;
+		ct(i) = 0; // equal
+	}
+
+	QVector<float> d_rows;
+	for (size_t i = 0; i < n; i++)
+	{
+		float sum = 0.0;
+		for (size_t j = 0; j < n; j++)
+		{
+			auto sim = getPairPairSim(all_variables[i].first, all_variables[i].second,
+				all_variables[j].first, all_variables[j].second);
+			if (sim > 0)
+			{
+				sparseset(W, i, j, sim);
+				//W(i, j) = sim;
+				//W(i, j) = 0.001*exp(10 * sim);
+				//W(i, j) = sim == 1 ? 1000 : (sim / (1 - sim))*(sim / (1 - sim));
+				//cout << "Similarity: " << W(i, j) << endl;
+				//D(i, j) = 0.0;
+				//Lambda(i, j) = 0.0;
+				sum += sim;
+			}
+		}
+		d_rows.push_back(sum);
+	}
+	for (size_t i = 0; i < n; i++)
+	{
+		//D(i, i) = d_rows[i];
+		//Lambda(i, i) = lambda;
+		sparseset(D, i, i, d_rows[i]);
+		sparseset(Lambda, i, i, lambda);
+	}
+	for (size_t i = 0; i < n; i++)
+	{
+		for (size_t j = 0; j < n; j++)
+		{
+			double g = sparseget(D, i, j) - sparseget(W, i, j) + sparseget(Lambda, i, j);
+			//auto g = D(i, j) - W(i, j) + Lambda(i, j);
+			if (g != 0)
+				sparseset(G, i, j, g);
+			//G(i, j) = D(i, j) - W(i, j) + Lambda(i, j);
+			//cout << "G(i,j): " << i <<"," << j << "\t" << G(i,j) << endl;
+		}
+	}
+	// unlabelled
+	for (size_t i = 0; i < n; i++)
+	{
+		bndl(i) = 0.0;
+		//float equal_prob = pair_equal[variables[i].first][variables[i].second];		
+		//bndu(i) = equal_prob == -1 ? 1.0 : 1 - equal_prob;
+		bndu(i) = 1.0;
+	}
+	// set box constraints, labeled variables fixed 0 or 1, unlabeled [0,1]
+	// labeled
+	for (size_t i = 0; i < n_labels; i++)
+	{
+		bndl(variable_index[i]) = labels[i];
+		bndu(variable_index[i]) = labels[i];
+	}
+	
+	// set btlambda and scales
+	int n_notindatabase = 0;
+	for (size_t i = 0; i < n; i++)
+	{
+		scales(i) = 1.0;
+		int i1 = all_variables[i].first;
+		int i2 = all_variables[i].second;
+		// remember to set pair_pref when values are calculated
+		if (pair_info[i1][i2] == -1)
+		{
+			bTLambda(i) = 0.0;
+			n_notindatabase++;
+		}
+		else
+		{
+			//cout << "pair_pref[i1][i2] = " << pair_pref[i1][i2] << endl;
+			bTLambda(i) = -pair_info[i1][i2] * lambda;
+		}
+	}
+	cout << "Number of not in database: " << n_notindatabase << endl;
+
+	// solve
+	real_1d_array x;
+	minqpstate state;
+	minqpreport rep;
+
+	// create solver, set quadratic/linear terms
+	minqpcreate(n, state);
+	minqpsetquadratictermsparse(state, G, true);
+	minqpsetlinearterm(state, bTLambda);
+	minqpsetlc(state, equal1condition, ct);
+	minqpsetbc(state, bndl, bndu);
+
+	minqpsetscale(state, scales);
 
 	minqpsetalgobleic(state, 0.0, 0.0, 0.0, 0);
 	minqpoptimize(state);
 	minqpresults(state, x, rep);
 	printf("%s\n", x.tostring(4).c_str()); // EXPECTED: [1.500,0.500]
-	printf("%d\n", int(rep.terminationtype)); // EXPECTED: 4	
+	printf("%d\n", int(rep.terminationtype)); // EXPECTED: 4
 
-	QString fileName("./small-object-results/propagate-results.txt");
-	if (!fileName.isNull())
-	{
-		QFile file(fileName); // if not exist, create
-		file.open(QIODevice::WriteOnly);
-		file.close();
-		file.open(QIODevice::ReadWrite);
-		if (file.isOpen())
-		{
-			QTextStream txtOutput(&file);
-			for (size_t i = 0; i < n; i++)
-			{
-				auto cat1 = all_cats[variables[i].first];
-				auto cat2 = all_cats[variables[i].second];
-				txtOutput << cat1 << " " << cat2 << ":" << x[i] << "\n";
-			}
-		}
-		file.close();
-	}
 	for (size_t i = 0; i < x.length(); i++)
 	{
 		results.push_back(x[i]);
@@ -532,6 +921,7 @@ void SmallObjectArrange::updatePrefProbElementwise(QVector<QPair<int, int>> indi
 			pair_equal[i1][i2] = pair_equal[i2][i1] = 0.0;
 		}
 		pair_pref[i1][i2] = new_pref[i];
+		// 如果不使用全部变量，记得加回去
 		pair_pref[i2][i1] = 1.0 - new_pref[i];
 	}
 }
@@ -852,6 +1242,20 @@ void SmallObjectArrange::updatePrefWithEqual(QVector<QVector<float>>& cat_pair_p
 				{
 				}
 			}
+			else // cat_pair_pref[i][j] == -1
+			{
+				if (cat_pair_equal[i][j] != -1)
+				{
+					float prob_ineq = 1 - cat_pair_equal[i][j];
+					if (i == j)
+					{
+						cat_pair_pref[i][j] = prob_ineq;
+						continue;
+					}
+					float p = prob_ineq/2.0;
+					cat_pair_pref[i][j] = cat_pair_pref[j][i]  = p;			
+				}
+			}
 		}
 	}
 }
@@ -872,19 +1276,25 @@ void SmallObjectArrange::initConnectedPairs()
 				// only consider pairs that ever appeared together
 				if (cat_cooccur_indicator[i][j] == 0)
 					continue;
+				// only consider different categories
+				if (i == j)
+					continue;
 				QVector<int> neighbor_j_m = getKNNCatIndices(all_cats[j], m_neighbor_num);
 				for (size_t p = 0; p < neighbor_i_k.size(); p++)
 				{
 					int k = neighbor_i_k[p];
 					for (size_t q = 0; q < neighbor_j_m.size(); q++)
-					{
-						total_pair++;
+					{						
 						int m = neighbor_j_m[q];
+						// only consider different categories
+						if (k == m)
+							continue;
 						auto pair_pair_sim = getPairPairSim(i, j, k, m);
 						if (pair_pair_sim > m_pair_pair_sim_threshold)
 						{
 							if (!connected_cat_pair_indices.contains(qMakePair(i, j)))
 								connected_cat_pair_indices[qMakePair(i, j)] = QVector<QPair<int, int>>();
+							total_pair++;
 							connected_cat_pair_indices[qMakePair(i, j)].push_back(qMakePair(k, m));
 							connected_cat_pair_names.push_back(qMakePair(qMakePair(all_cats[i], all_cats[j]), qMakePair(all_cats[k], all_cats[m])));
 						}						
@@ -892,7 +1302,7 @@ void SmallObjectArrange::initConnectedPairs()
 				}			
 			}
 		}
-		cout << total_pair << endl;
+		cout << "total pair: " << total_pair << endl;
 	}
 }
 
@@ -933,6 +1343,24 @@ void SmallObjectArrange::initCooccurPairs()
 	}
 	file->close();
 	delete file;
+}
+
+void SmallObjectArrange::initAllVariables()
+{
+	all_variables.clear();
+	QVector<QPair<int, int>> first_half_all_variables, second_half_all_variables;
+	int n_cat = all_cats.size();
+	for (size_t i = 0; i < n_cat; i++)
+	{
+		for (size_t j = i + 1; j < n_cat; j++)
+		{
+			first_half_all_variables.push_back(qMakePair(i, j));
+			second_half_all_variables.push_back(qMakePair(j, i));
+		}
+	}
+	int uniq_n = first_half_all_variables.size();
+	all_variables.append(first_half_all_variables);
+	all_variables.append(second_half_all_variables);
 }
 
 QVector<int> SmallObjectArrange::getKNNCatIndices(CatName cat, int k)

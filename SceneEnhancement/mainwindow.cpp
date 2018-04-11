@@ -89,7 +89,9 @@ MainWindow::MainWindow(QWidget *parent)
 	MenuRender = menuBar()->addMenu(tr("Render"));	
 	QAction *renderObj = MenuRender->addAction(tr("Batch render objects"));
 	connect(renderObj, &QAction::triggered, displaySceneWidget, &DisplaySceneGLWidget::RenderObjects);
-
+	QAction *renderSelectedSmallBB = MenuRender->addAction(tr("Render selected small object bounding boxes"));
+	connect(renderSelectedSmallBB, &QAction::triggered, displaySceneWidget, &DisplaySceneGLWidget::ToggleDrawingSelectedSmallObjectBB);
+	
 	MenuRender = menuBar()->addMenu(tr("Small object Arrangement"));
 	QAction *initSmallObject = MenuRender->addAction(tr("Initialize small objects"));
 	connect(initSmallObject, &QAction::triggered, displaySceneWidget, &DisplaySceneGLWidget::InitSmallObjects);

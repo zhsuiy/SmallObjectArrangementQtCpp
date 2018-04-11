@@ -122,6 +122,10 @@ void Parameter::init()
 		{
 			this->IsDrawDecorationBoundingBox = Utility::QStr2Bool(parts[1]);
 		}
+		if (parts[0].compare("DrawSelectedBoundingBox", Qt::CaseInsensitive) == 0)
+		{
+			this->IsDrawSelectedBoundingBox = Utility::QStr2Bool(parts[1]);
+		}
 		if (parts[0].compare("DrawFurnitureModel", Qt::CaseInsensitive) == 0)
 		{
 			this->IsDrawFurnitureModel = Utility::QStr2Bool(parts[1]);
