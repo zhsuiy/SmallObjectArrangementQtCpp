@@ -44,6 +44,7 @@ public:
 	void UpdateMeshMaterials();
 	void UpdateMeshMaterials(ColorPalette *color_palette);
 	void UpdateDecorationLayout();
+	void UpdateDecorationYAlignment();
 	void UpdateDecorationLayoutWithConstraints();
 	void ClearDecorationLayout();
 	void AddDecorationModel(DecorationModel *model);

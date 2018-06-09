@@ -1,7 +1,8 @@
 ﻿#pragma once
 #include <QWidget>
-#include <QTextEdit>
+#include <QLabel>
 #include <QtWidgets/QRadioButton>
+#include <QTextEdit>
 
 class FloatingWidget : public QWidget {
 	Q_OBJECT
@@ -9,8 +10,8 @@ class FloatingWidget : public QWidget {
 public:
 	FloatingWidget(QWidget * parent = Q_NULLPTR);
 	~FloatingWidget();
-	QTextEdit *TextCatA;
-	QTextEdit *TextCatB;
+	QLabel *TextCatA;
+	QLabel *TextCatB;
 	QTextEdit *TextMediumPref;
 	QTextEdit *TextDepthPref;
 	QTextEdit *TextHeightPref;

@@ -997,10 +997,22 @@ void DisplaySceneGLWidget::InitSmallObjects()
 	small_object_arranger->InitArranger();
 }
 
+void DisplaySceneGLWidget::OnlyApplyUserPreference()
+{
+	small_object_arranger->SetPopagateRoundTo0();
+	QVector<QPair<QPair<CatName, CatName>, Relation>> height_pref, medium_pref, depth_pref;
+	medium_pref = parsePrefFromText(m_small_object_panel->TextMediumPref->toPlainText(),true);
+	depth_pref = parsePrefFromText(m_small_object_panel->TextDepthPref->toPlainText());
+	height_pref = parsePrefFromText(m_small_object_panel->TextHeightPref->toPlainText());
+	small_object_arranger->UpdateUserPreferences(height_pref, medium_pref, depth_pref);
+	small_object_arranger->PropagateUserPreference();
+}
+
 void DisplaySceneGLWidget::PropagateUserPreferences()
 {
+	small_object_arranger->SetPopagateRoundTo2();
 	QVector<QPair<QPair<CatName, CatName>, Relation>> height_pref, medium_pref, depth_pref;
-	medium_pref = parsePrefFromText(m_small_object_panel->TextMediumPref->toPlainText());
+	medium_pref = parsePrefFromText(m_small_object_panel->TextMediumPref->toPlainText(),true);
 	depth_pref = parsePrefFromText(m_small_object_panel->TextDepthPref->toPlainText());
 	height_pref = parsePrefFromText(m_small_object_panel->TextHeightPref->toPlainText());
 	small_object_arranger->UpdateUserPreferences(height_pref, medium_pref, depth_pref);
@@ -1018,7 +1030,57 @@ void DisplaySceneGLWidget::ArrangeDecorationsActive()
 
 }
 
-QVector<QPair<QPair<CatName, CatName>, Relation>> DisplaySceneGLWidget::parsePrefFromText(QString txt)
+void DisplaySceneGLWidget::UpdateY()
+{
+	models.clear();
+	// layout decoration models
+	for (size_t i = 0; i < furniture_models.size(); i++)
+	{
+		//furniture_models[i]->UpdateDecorationLayoutWithConstraints();
+		furniture_models[i]->UpdateDecorationYAlignment();
+	}
+
+	
+	// add furniture and decoration models to models
+	for (size_t i = 0; i < furniture_models.size(); i++)
+	{
+		models.push_back(furniture_models[i]);
+	}
+
+	// add decoration models to models
+	// 只有当模型真正被摆到furniture上的时候才需要被渲染
+	for (size_t i = 0; i < decoration_models.size(); i++)
+	{
+		if (decoration_models[i]->IsAssigned)
+		{
+			models.push_back(decoration_models[i]);
+		}
+	}
+
+	update();
+}
+
+void DisplaySceneGLWidget::ClearActiveSmallObjectState()
+{
+	// clear selected
+	for (size_t i = 0; i < models.size(); i++)
+	{
+		models[i]->IsSelected = false;
+	}
+	selected_model_ids.clear();
+	selected_model_cats.clear();
+
+	//
+	m_small_object_panel->TextCatA->clear();
+	m_small_object_panel->TextCatB->clear();
+	m_small_object_panel->TextMediumPref->clear();
+	m_small_object_panel->TextHeightPref->clear();
+	m_small_object_panel->TextDepthPref->clear();
+
+	update();	
+}
+
+QVector<QPair<QPair<CatName, CatName>, Relation>> DisplaySceneGLWidget::parsePrefFromText(QString txt, bool toggleGL)
 {
 	QVector<QPair<QPair<CatName, CatName>, Relation>> pref;
 	QStringList lines = txt.split("\n");
@@ -1034,9 +1096,15 @@ QVector<QPair<QPair<CatName, CatName>, Relation>> DisplaySceneGLWidget::parsePre
 			if (rel == tr("="))
 				r = Relation::Equal;
 			else if (rel == tr(">"))
-				r = Relation::Greater;
+				if (toggleGL)
+					r = Relation::Less;
+				else
+					r = Relation::Greater;
 			else if (rel == tr("<"))
-				r = Relation::Less;
+				if (toggleGL)
+					r = Relation::Greater;
+				else	
+					r = Relation::Less;
 			pref.push_back(qMakePair(qMakePair(cat_A, cat_B), r));
 		}
 	}
@@ -1060,7 +1128,9 @@ void DisplaySceneGLWidget::initializeGL()
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	
+	//glClearColor(0.5, 0.5, 0.5, 0);
 	glClearColor(0.3, 0.3, 0.3, 0);
+	//glClearColor(1, 1, 1, 0);
 	//glRenderMode(GL_SELECT);
 
 	// init model shader

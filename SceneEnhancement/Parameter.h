@@ -52,6 +52,7 @@ public:
 	bool IsDrawSelectedBoundingBox; // 是否绘制选中的小物体的boundingbox
 	bool IsDrawFurnitureModel; // 是否绘制家具
 	bool IsDrawDecorationModel; // 是否绘制小物体
+	bool IsRenderFloorWall;
 	int SelectSampleMethodType; // 使用何种方法选择config, 0-MCMC, 1-submodular
 	int TotalModelCount = 0;
 private:

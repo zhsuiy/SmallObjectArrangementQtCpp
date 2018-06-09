@@ -24,7 +24,7 @@ MainWindow::MainWindow(QWidget *parent)
 	displaySceneWidget->setFixedWidth(1400);
 	displaySceneWidget->setFixedHeight(800);
 	main_layout->addWidget(displaySceneWidget);		
-	setWindowTitle("Scene Enhancement");
+	setWindowTitle("Active Arrangement of Small Objects");
 	centralWidget->setLayout(main_layout);	
 	main_layout->addWidget(smallObjectPanel);
 
@@ -95,12 +95,16 @@ MainWindow::MainWindow(QWidget *parent)
 	MenuRender = menuBar()->addMenu(tr("Small object Arrangement"));
 	QAction *initSmallObject = MenuRender->addAction(tr("Initialize small objects"));
 	connect(initSmallObject, &QAction::triggered, displaySceneWidget, &DisplaySceneGLWidget::InitSmallObjects);
+	QAction *userpref = MenuRender->addAction(tr("Only apply user preferences"));
+	connect(userpref, &QAction::triggered, displaySceneWidget, &DisplaySceneGLWidget::OnlyApplyUserPreference);
 	QAction *propagate = MenuRender->addAction(tr("Propagate user preferences"));
 	connect(propagate, &QAction::triggered, displaySceneWidget, &DisplaySceneGLWidget::PropagateUserPreferences);
 	QAction *arrange = MenuRender->addAction(tr("Arrange small objects using preference and equal matrix"));
 	connect(arrange, &QAction::triggered, displaySceneWidget, &DisplaySceneGLWidget::ArrangeDecorationsActive);
-
-
+	QAction *alighY = MenuRender->addAction(tr("Align small objects to surface"));
+	connect(alighY, &QAction::triggered, displaySceneWidget, &DisplaySceneGLWidget::UpdateY);
+	QAction *clearSmall = MenuRender->addAction(tr("Clear all states"));
+	connect(clearSmall, &QAction::triggered, displaySceneWidget, &DisplaySceneGLWidget::ClearActiveSmallObjectState);
 
 	displaySceneWidget->setFocusPolicy(Qt::StrongFocus);
 	

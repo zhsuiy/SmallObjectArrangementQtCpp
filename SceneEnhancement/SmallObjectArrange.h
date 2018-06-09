@@ -4,6 +4,8 @@
 #include <QtCore/qmap.h>
 #include <QtCore/qvector.h>
 #include "Parameter.h"
+#include <unordered_set>
+#include <unordered_map>
 
 using namespace std;
 typedef QString CatName;
@@ -42,17 +44,29 @@ public:
 	QVector<QVector<float>> GetDepthFrontProb() {
 		return cat_pair_depth;
 	}
+	QVector<QPair<QPair<CatName, CatName>, Relation>> &GetUserPreferencesHeight()
+	{
+		return	user_preferences_height;
+	}
+	unordered_map<int, unordered_set<int>> GetUserPrefHeightIndexPair()
+	{
+		return	user_pref_height_cat_index_pair;
+	}
+
+	void SetPopagateRoundTo2(){ m_num_propagate_round = 2; }
+	void SetPopagateRoundTo0() { m_num_propagate_round = 0; }
 	
 private:
 // hyper parameters
-	QString uid = "r30-d10";
+	QString uid = "r40-d20";
 	float m_pair_pair_sim_threshold = 0;
 	int m_neighbor_num = 10;
 	// how many rounds to get extend variables when propagating uneuqal prefrences
 	int m_variable_round_unequal = 2;
 	int m_variable_round_equal = 2;
-	float m_lambda_equal = 10;
-	float m_lambda_unequal = 10;
+	float m_lambda_equal = 0.01;
+	float m_lambda_unequal = 0.01;
+	float m_num_propagate_round = 2;
 // members
 	Parameter *m_para;	
 	QVector<CatName> all_cats;
@@ -85,6 +99,9 @@ private:
 	QVector<QPair<QPair<CatName, CatName>, Relation>> user_preferences_height;
 	QVector<QPair<QPair<CatName, CatName>, Relation>> user_preferences_medium;
 	QVector<QPair<QPair<CatName, CatName>, Relation>> user_preferences_depth;
+
+	// user related indices
+	unordered_map<int,unordered_set<int>> user_pref_height_cat_index_pair;
 
 	// all variables
 	QVector<QPair<int, int>> all_variables;

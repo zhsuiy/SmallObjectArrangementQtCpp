@@ -134,6 +134,10 @@ void Parameter::init()
 		{
 			this->IsDrawDecorationModel = Utility::QStr2Bool(parts[1]);
 		}
+		if (parts[0].compare("IsRenderFloorWall", Qt::CaseInsensitive) == 0)
+		{
+			this->IsRenderFloorWall = Utility::QStr2Bool(parts[1]);
+		}		
 		if (parts[0].compare("MaxFurnitureNum",Qt::CaseInsensitive) == 0)
 		{
 			this->MaxSupportNumber = Utility::QStr2Int(parts[1]);

@@ -66,6 +66,16 @@ void SmallObjectArrange::UpdateUserPreferences(QVector<QPair<QPair<CatName, CatN
 	user_preferences_height = height_pref;
 	user_preferences_medium = medium_pref;
 	user_preferences_depth = depth_pref;
+		
+	// update user pref indices
+	user_pref_height_cat_index_pair.clear();
+	for (size_t i = 0; i < user_preferences_height.size(); i++)
+	{
+		int cat_i = map_cat_index[user_preferences_height[i].first.first];
+		int cat_j = map_cat_index[user_preferences_height[i].first.second];
+		user_pref_height_cat_index_pair[cat_i].insert(cat_j);
+	}
+
 	/*user_preferences_height.append(height_pref);
 	user_preferences_medium.append(medium_pref);
 	user_preferences_depth.append(depth_pref);*/
@@ -180,6 +190,7 @@ void SmallObjectArrange::initCatSimMatrix()
 	QFile *file = new QFile(path);
 	if (!file->open(QIODevice::ReadWrite | QIODevice::Text))
 		std::cout << "Can't open file " + path.toStdString() << endl;
+	QVector<QPair<int, int>> indices;
 	while (!file->atEnd())
 	{
 		QByteArray line = file->readLine();
@@ -195,11 +206,22 @@ void SmallObjectArrange::initCatSimMatrix()
 			int index2 = map_cat_index[cat2];
 			double sim = parts[2].trimmed().toDouble();
 			cat_word2vec_similarity[index1][index2] = sim;
-			cat_word2vec_similarity[index2][index1] = sim;
+			indices.push_back(qMakePair(index1, index2));
+			//cat_word2vec_similarity[index2][index1] = sim;
 		}		
 	}
 	file->close();
 	delete file;
+
+	// 确保对称性
+	for (size_t i = 0; i < indices.size(); i++)
+	{
+		auto x = indices[i].first;
+		auto y = indices[i].second;
+		float max_prob = max(cat_word2vec_similarity[x][y], cat_word2vec_similarity[y][x]);
+		cat_word2vec_similarity[y][x] = cat_word2vec_similarity[x][y] = max_prob;
+		
+	}
 
 	// same cat
 	for (size_t i = 0; i < n; i++)
@@ -329,7 +351,8 @@ QVector<float> SmallObjectArrange::getPropagatedResults(QVector<QPair<int, int>>
 	int start_pos = 0;
 	int round = 0;
 	int n_labels = labels.size();	
-	while (true)
+	//while (true)
+	while (round < m_num_propagate_round)
 	{
 		int curent_n_var = variables.size();
 		QVector<QPair<int, int>> new_variables;
@@ -507,7 +530,8 @@ QVector<float> SmallObjectArrange::getPropagatedResultsPref(QVector<QPair<int, i
 	int start_pos = 0;
 	int round = 0;
 	int n_labels = labels.size();
-	while (true)
+	// while (true)
+	while (round < m_num_propagate_round)
 	{
 		int curent_n_var = variables.size();
 		QVector<QPair<int, int>> new_variables;
@@ -1274,8 +1298,9 @@ void SmallObjectArrange::initConnectedPairs()
 			for (size_t j = 0; j < n; j++)
 			{
 				// only consider pairs that ever appeared together
-				if (cat_cooccur_indicator[i][j] == 0)
-					continue;
+				// 不要求 co-occur
+				//if (cat_cooccur_indicator[i][j] == 0)
+				//	continue;
 				// only consider different categories
 				if (i == j)
 					continue;

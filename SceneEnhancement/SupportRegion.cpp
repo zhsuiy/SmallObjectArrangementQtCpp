@@ -141,6 +141,24 @@ double SupportRegion::ArrangeDecorationModels(FurnitureModel* support, QVector<D
 	return all_results[0].second;
 }
 
+void SupportRegion::AlignDecorationModelsY(FurnitureModel* support, QVector<DecorationModel*> models)
+{
+	if (models.size() == 0)
+	{
+		return;
+	}
+	m_decoration_models = models;
+	furniture = support;
+
+	for (size_t i = 0; i < models.size(); i++)
+	{
+		float ty = this->Height - furniture->GetTranslate().y() + abs(models[i]->boundingBox->LeftBottomBack().y())*models[i]->GetScale();
+		auto tx = models[i]->GetRelativeTranslate().x();
+		auto tz = models[i]->GetRelativeTranslate().z();
+		models[i]->SetRelativeTranslate(tx, ty, tz);
+	}	
+}
+
 // For active learning
 double SupportRegion::ArrangeDecorationModels(FurnitureModel * support, QVector<DecorationModel*> models, SmallObjectArrange * arranger)
 {

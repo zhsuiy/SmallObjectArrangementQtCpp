@@ -105,7 +105,8 @@ void FurnitureModel::DetectSupportRegions()
 	int support_num = 1; //其他家具默认只有一个摆放区域
 	if (para->MultiLayerFurnitures.contains(this->Type))
 	{
-		support_num = 10;
+		//support_num = 10; // 4层书架
+		support_num = 2; // 后面的例子
 	}
 	//if (this->Type.compare("Cabinet",Qt::CaseInsensitive) == 0
 	//	|| this->Type.compare("SideTable", Qt::CaseInsensitive) == 0) // 橱柜单独处理,可以有多层
@@ -131,7 +132,8 @@ void FurnitureModel::DetectSupportRegions()
 			if (max_z < v.z())
 				max_z = v.z();			
 		}
-		if (max_x - min_x >= bbwidth/4 && max_z - min_z >= bbdepth/4	// filter out small layers
+		// used to be if (max_x - min_x >= bbwidth/4 && max_z - min_z >= bbdepth/4
+		if (max_x - min_x >= bbwidth/4.0 && max_z - min_z >= bbdepth/4.0	// filter out small layers
 			&&  abs(last_height - cur_height) >= (bbheight / (support_num + 1))) // two layers should not too close in height
 		{
 			this->support_regions.push_back(new SupportRegion(min_x, max_x, min_z, max_z, cur_height, modelMatrix));			
@@ -272,17 +274,21 @@ void FurnitureModel::UpdateDecorationLayoutActiveLearning(SmallObjectArrange * a
 		// calculate cost
 		float height_cost = 10000;
 		// from top to down
-		int n_layers = support_regions.size();
+		int n_layers = support_regions.size();		
 		int m = decoration_models.size();
 		QVector<QVector<QString>> dec_each_layer;
 		QVector<QVector<int>> dec_each_layer_index, best_each_layer_index;
 		vector<int> indices;
 		for (size_t i = 0; i < m; i++)
 			indices.push_back(i);
-		int num_cat_per_layer = para->EachSupportLayerMaxModelNum;
+		//int num_cat_per_layer = para->EachSupportLayerMaxModelNum;
+		
 		auto permut = Utility::getCnm(indices, m);
 		int init = Parameter::GetParameterInstance()->AllowTupFurnitures.contains(this->Type) ? 0 : 1;
+		int num_cat_per_layer = m / (n_layers - init);
 		std::cout << "Assigning small objects to each layer\n";
+		
+		
 		for (size_t i = 0; i < permut.size(); i++)
 		{
 			dec_each_layer.clear();
@@ -339,9 +345,12 @@ void FurnitureModel::UpdateDecorationLayoutActiveLearning(SmallObjectArrange * a
 
 float FurnitureModel::getHeightCost(QVector<QVector<QString>>& cat_per_layer, SmallObjectArrange * arranger)
 {
+
 	auto height_pref = arranger->GetHeightHigherProb();
 	auto height_equal = arranger->GetHeightEqualProb();
 	auto cat_index_map = arranger->GetCatIndexMapping();
+	auto height_user_pref_index_pair = arranger->GetUserPrefHeightIndexPair();
+	
 	float f = 0.0;
 	QVector<QPair<QString, int>> cat_height_pair;
 	for (size_t i = 0; i < cat_per_layer.size(); i++)
@@ -368,6 +377,12 @@ float FurnitureModel::getHeightCost(QVector<QVector<QString>>& cat_per_layer, Sm
 				// index in active learning data
 				auto index_i = cat_index_map[cati];
 				auto index_j = cat_index_map[catj];
+
+				bool is_user_index_flag = height_user_pref_index_pair.find(index_i) != height_user_pref_index_pair.end() &&
+					height_user_pref_index_pair[index_i].find(index_j) != height_user_pref_index_pair[index_i].end() ||
+					height_user_pref_index_pair.find(index_j) != height_user_pref_index_pair.end() &&
+					height_user_pref_index_pair[index_j].find(index_i) != height_user_pref_index_pair[index_j].end();
+
 				auto equal_ij = height_equal[index_i][index_j];
 				auto height_higher_ij = height_pref[index_i][index_j];
 				// not defined
@@ -377,11 +392,13 @@ float FurnitureModel::getHeightCost(QVector<QVector<QString>>& cat_per_layer, Sm
 				// equal cost:
 				// record how the two objects are at different heights
 				double equal_cost = layeri == layerj ? 0 : 1.0 / (1.0 + exp(-(abs(layeri - layerj))));
+				equal_ij = is_user_index_flag ? 10 * equal_ij : equal_ij;
 				f += equal_ij*equal_cost;
 				// record how 
 				// j should be back, i should be front
 				// using depth_front_ij to punish how j is wrongly put in front of i
 				double unequal_cost = layeri < layerj ? 0 : 1.0 / (1.0 + exp(-(layeri - layerj)));
+				height_higher_ij = is_user_index_flag ? 10 * height_higher_ij : height_higher_ij;
 				f += height_higher_ij* unequal_cost;
 				norm_n++;
 			}
@@ -651,7 +668,24 @@ void FurnitureModel::UpdateDecorationLayout()
 		}
 		std::cout << this->Type.toStdString() << " Decoration Score: " << F << std::endl;	
 	}
+}
 
+void FurnitureModel::UpdateDecorationYAlignment()
+{
+	auto para = Parameter::GetParameterInstance();
+	if (decoration_models.size() == 0)
+	{
+		return;
+	}
+	if (support_regions.size() == 1) // 单层物体
+	{
+		SupportRegion *support_region = this->support_regions[0];			
+		support_region->AlignDecorationModelsY(this,decoration_models);
+	}
+	else// 多层的
+	{
+		// 暂不考虑
+	}
 }
 
 // see ./config/DecorationModels_girl.txt

@@ -71,9 +71,12 @@ public:
 
 	// small object arrangement
 	void InitSmallObjects();
+	void OnlyApplyUserPreference();
 	void PropagateUserPreferences();
 	void ArrangeDecorationsActive();
-	QVector<QPair<QPair<CatName, CatName>, Relation>> parsePrefFromText(QString txt);
+	void UpdateY();
+	void ClearActiveSmallObjectState();
+	QVector<QPair<QPair<CatName, CatName>, Relation>> parsePrefFromText(QString txt, bool toggleGL = false);
 protected:
 	void initializeGL();
 	void paintGL();

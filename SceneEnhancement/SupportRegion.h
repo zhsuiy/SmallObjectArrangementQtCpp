@@ -19,6 +19,7 @@ public:
 	bool IsSpaceEnough() const;	
 	bool TryPutDecorationModel(DecorationModel *model);
 	double ArrangeDecorationModels(FurnitureModel* support, QVector<DecorationModel*> models);
+	void AlignDecorationModelsY(FurnitureModel* support, QVector<DecorationModel*> models);
 	// for active learning
 	double ArrangeDecorationModels(FurnitureModel* support, QVector<DecorationModel*> models, SmallObjectArrange* arranger);
 	

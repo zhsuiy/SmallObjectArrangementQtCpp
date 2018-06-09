@@ -31,13 +31,13 @@ FloatingWidget::FloatingWidget(QWidget * parent) : QWidget(parent)
 	vbox->addWidget(RadioDepth);
 	vbox->addWidget(RadioHeight);
 	//vbox->addStretch(1);
-	vbox->setSpacing(5);
-	type_groupBox->setLayout(vbox);
+	//vbox->setSpacing(20);	
+	type_groupBox->setLayout(vbox);	
 
 	// category A
 	QGroupBox *cata_gb = new QGroupBox(tr("Category A"));
 	QHBoxLayout *cata_hbox = new QHBoxLayout;
-	TextCatA = new QTextEdit();
+	TextCatA = new QLabel();
 	//TextCatA->setText("Hello, world!");
 	cata_hbox->addWidget(TextCatA);	
 	cata_gb->setLayout(cata_hbox);
@@ -45,7 +45,7 @@ FloatingWidget::FloatingWidget(QWidget * parent) : QWidget(parent)
 	// category B
 	QGroupBox *catb_gb = new QGroupBox(tr("Category B"));
 	QHBoxLayout *catb_hbox = new QHBoxLayout;
-	TextCatB = new QTextEdit();
+	TextCatB = new QLabel();
 	//TextCatB->setText("notebook");
 	catb_hbox->addWidget(TextCatB);
 	catb_gb->setLayout(catb_hbox);
@@ -60,7 +60,7 @@ FloatingWidget::FloatingWidget(QWidget * parent) : QWidget(parent)
 	hbox->addWidget(RadioGreater);
 	hbox->addWidget(RadioEqual);
 	hbox->addWidget(RadioLess);
-	hbox->addSpacing(5);
+	//hbox->addSpacing(5);
 	relation_groupBox->setLayout(hbox);
 
 	QPushButton *btn_insert = new QPushButton(tr("&Insert"));
@@ -102,6 +102,31 @@ FloatingWidget::FloatingWidget(QWidget * parent) : QWidget(parent)
 
 	// method
 	connect(btn_insert, SIGNAL(clicked()), this, SLOT(insertPref()));
+
+	QFont ft;
+	ft.setPointSize(12);
+	ft.setFamily("Arial");
+	type_groupBox->setFont(ft);
+	cata_gb->setFont(ft);
+	catb_gb->setFont(ft);
+	relation_groupBox->setFont(ft);
+	btn_insert->setFont(ft);
+	m_gb->setFont(ft);
+	d_gb->setFont(ft);
+	h_gb->setFont(ft);
+
+	QFont ft2;
+	ft2.setPointSize(10);
+	ft2.setFamily("Arial");
+	QPalette pa;
+	pa.setColor(QPalette::WindowText, Qt::red);
+	TextCatA->setPalette(pa); TextCatA->setFont(ft2);
+	TextCatB->setPalette(pa); TextCatB->setFont(ft2);
+	TextMediumPref->setPalette(pa); TextMediumPref->setFont(ft2);
+	TextDepthPref->setPalette(pa); TextDepthPref->setFont(ft2);
+	TextHeightPref->setPalette(pa); TextHeightPref->setFont(ft2);
+
+	
 }
 
 FloatingWidget::~FloatingWidget() {
@@ -118,8 +143,8 @@ void FloatingWidget::insertPref()
 	if (RadioMedium->isChecked())
 		cur_pref_text = TextMediumPref;
 	auto org_txt = cur_pref_text->toPlainText();
-	auto cat_a = TextCatA->toPlainText();
-	auto cat_b = TextCatB->toPlainText();
+	auto cat_a = TextCatA->text();
+	auto cat_b = TextCatB->text();
 	QString relation;
 	if (RadioGreater->isChecked())
 		relation = tr(" > ");
