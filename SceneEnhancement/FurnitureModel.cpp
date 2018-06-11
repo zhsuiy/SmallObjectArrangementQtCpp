@@ -2,6 +2,8 @@
 #include "Parameter.h"
 #include "RecolorImage.h"
 #include "SmallObjectArrange.h"
+#include "com_retriever.h"
+#include <vector>
 
 FurnitureModel::FurnitureModel()
 {
@@ -106,7 +108,7 @@ void FurnitureModel::DetectSupportRegions()
 	if (para->MultiLayerFurnitures.contains(this->Type))
 	{
 		//support_num = 10; // 4层书架
-		support_num = 2; // 后面的例子
+		support_num = 3; // 后面的例子
 	}
 	//if (this->Type.compare("Cabinet",Qt::CaseInsensitive) == 0
 	//	|| this->Type.compare("SideTable", Qt::CaseInsensitive) == 0) // 橱柜单独处理,可以有多层
@@ -277,44 +279,34 @@ void FurnitureModel::UpdateDecorationLayoutActiveLearning(SmallObjectArrange * a
 		int n_layers = support_regions.size();		
 		int m = decoration_models.size();
 		QVector<QVector<QString>> dec_each_layer;
-		QVector<QVector<int>> dec_each_layer_index, best_each_layer_index;
-		vector<int> indices;
-		for (size_t i = 0; i < m; i++)
-			indices.push_back(i);
-		//int num_cat_per_layer = para->EachSupportLayerMaxModelNum;
-		
-		auto permut = Utility::getCnm(indices, m);
+		vector<vector<int>> dec_each_layer_index, best_each_layer_index;		
 		int init = Parameter::GetParameterInstance()->AllowTupFurnitures.contains(this->Type) ? 0 : 1;
-		int num_cat_per_layer = m / (n_layers - init);
+		auto all_combs_layers = getIndexPerLayer(m, (n_layers-init));
+				
 		std::cout << "Assigning small objects to each layer\n";
-		
-		
-		for (size_t i = 0; i < permut.size(); i++)
+
+		for (size_t i = 0; i < all_combs_layers.size(); i++)
 		{
+			dec_each_layer_index = all_combs_layers[i];
 			dec_each_layer.clear();
-			dec_each_layer_index.clear();
-			auto p = permut[i];
-			for (size_t k = 0; k < p.size(); k = k + num_cat_per_layer)
+			for (size_t j = 0; j < dec_each_layer_index.size(); j++)
 			{
 				QVector<QString> cur;
-				QVector<int> cur_index;
-				for (size_t q = 0; q < num_cat_per_layer; q++)
+				for (size_t k = 0; k < dec_each_layer_index[j].size(); k++)
 				{
-					cur.push_back(dec_cats[p[k+q]]);
-					cur_index.push_back(p[k+q]);
-				}					
+					cur.push_back(dec_cats[dec_each_layer_index[j][k]]);
+				}
 				dec_each_layer.push_back(cur);
-				dec_each_layer_index.push_back(cur_index);
 			}
 			float cost = getHeightCost(dec_each_layer, arranger);
 			if (cost < height_cost)
 			{
 				height_cost = cost;
-				best_each_layer_index = QVector<QVector<int>>(dec_each_layer_index);
+				best_each_layer_index = dec_each_layer_index;
 			}
-			if (i % 50 == 0)
-				std::cout << ".";
-		}
+			if (i % 10 == 0)
+				std::cout << ".";			
+		}	
 
 		double F = 0.0;
 		

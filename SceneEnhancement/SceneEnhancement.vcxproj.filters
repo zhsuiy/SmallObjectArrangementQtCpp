@@ -377,6 +377,12 @@
     <ClInclude Include="..\3rdparty\include\alglib-3.13.0\src\stdafx.h">
       <Filter>Header Files\alglib</Filter>
     </ClInclude>
+    <ClInclude Include="com_retriever.h">
+      <Filter>Header Files\Algorithm</Filter>
+    </ClInclude>
+    <ClInclude Include="comb_perm.h">
+      <Filter>Header Files\Algorithm</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Image Include="Resources\texture\flower.jpg">

@@ -361,13 +361,13 @@ double SupportRegion::getCost(QVector<DecorationModel*> models, QMap<int, QPair<
 	double F = 0.0;
 
 	// 碰撞检测
-	F += 10 * calculate_collide_area(models);
+	F += 100 * calculate_collide_area(models);
 
 	// 和其他大家具的碰撞
-	F += 10 * calculate_collide_area(models, Assets::GetAssetsInstance()->GetFurnitureModels());
+	F += 100 * calculate_collide_area(models, Assets::GetAssetsInstance()->GetFurnitureModels());
 
 	// 出界检测
-	F += 10 * calculate_boundary_test(models);
+	F += 100 * calculate_boundary_test(models);
 
 	// 关于前后order
 	F += 10 * calculate_decoration_depth_orders(models, decoration_XZ, arranger);
